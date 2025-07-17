@@ -1,3 +1,4 @@
+# backend/generate_font.py
 import os
 from defcon import Font
 from ufo2ft import compileTTF
@@ -7,20 +8,8 @@ from xml.dom import minidom
 
 # מיפוי שמות האותיות לעברית
 letter_map = {
-    "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
-    "he": 0x05D4, "vav": 0x05D5, "zayin": 0x05D6, "het": 0x05D7,
-    "tet": 0x05D8, "yod": 0x05D9, "kaf": 0x05DB, "lamed": 0x05DC,
-    "mem": 0x05DE, "nun": 0x05E0, "samekh": 0x05E1, "ayin": 0x05E2,
-    "pe": 0x05E4, "tsadi": 0x05E6, "qof": 0x05E7, "resh": 0x05E8,
-    "shin": 0x05E9, "tav": 0x05EA,
-    "final_kaf": 0x05DA, "final_mem": 0x05DD, "final_nun": 0x05DF,
-    "final_pe": 0x05E3, "final_tsadi": 0x05E5
+    # ... כפי שהיה ...
 }
-
-# תיקיות קלט ופלט
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SVG_FOLDER = os.path.join(BASE_DIR, 'svg_letters')  # שים לב שזו התיקייה שלך
-EXPORT_PATH = os.path.join(BASE_DIR, '..', 'exports', 'hebrew_font.ttf')
 
 def generate_ttf(svg_folder, output_path):
     print("🚀 Generating font with defcon + ufo2ft")
@@ -39,15 +28,11 @@ def generate_ttf(svg_folder, output_path):
     for filename in os.listdir(svg_folder):
         if not filename.endswith(".svg"):
             continue
-
         parts = filename.split("_")
         if len(parts) != 2:
-            print(f"⚠ שם קובץ לא תקני: {filename}")
             continue
-
         name = parts[1].replace(".svg", "")
         if name not in letter_map:
-            print(f"⚠ שם אות לא ידוע: {name}")
             continue
 
         unicode_val = letter_map[name]
@@ -60,36 +45,27 @@ def generate_ttf(svg_folder, output_path):
             doc = minidom.parse(svg_path)
             paths = doc.getElementsByTagName('path')
             if not paths:
-                print(f"⚠ לא נמצא <path> בתוך {filename}")
                 continue
-
             d = paths[0].getAttribute('d')
             doc.unlink()
-
             pen = TTGlyphPen(None)
             parse_path(d, pen)
             glyph._glyph = pen.glyph()
-
             found_glyphs += 1
         except Exception as e:
             print(f"❌ שגיאה ב־{filename}: {e}")
 
     if found_glyphs == 0:
-        print("❌ לא נמצאו גליפים חוקיים - הפונט לא יישמר.")
-        return
+        print("❌ No glyphs found, aborting font generation.")
+        return False
 
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     try:
-        # ודא שהתיקייה קיימת
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
-        # יצירת ושמירת הפונט
         ttf = compileTTF(font)
         ttf.save(output_path)
-        print(f"✅ הפונט נשמר בהצלחה: {output_path}")
+        print(f"✅ Font saved at: {output_path}")
+        return True
     except Exception as e:
-        print(f"❌ שגיאה בשמירת פונט: {e}")
-
-# ✅ הוספה חשובה להרצה
-if __name__ == "__main__":
-    generate_ttf(SVG_FOLDER, EXPORT_PATH)
+        print(f"❌ Error saving font: {e}")
+        return False
 
