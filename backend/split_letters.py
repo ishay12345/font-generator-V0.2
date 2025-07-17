@@ -87,7 +87,7 @@ def split_letters(image_path, output_folder):
     hebrew_letters = [
         'alef','bet','gimel','dalet','he','vav','zayin','het','tet',
         'yod','kaf','lamed','mem','nun','samekh','ayin','pe','tsadi',
-        'qof','resh','shin','tav','final_kaf','final_mem','final_nun','final_pe','final_tsadi'
+        'qof','resh','shin','tav','kaf_final','mem_final','nun_final','pe_final','tsadi_final'
     ]
 
     padding = 10
