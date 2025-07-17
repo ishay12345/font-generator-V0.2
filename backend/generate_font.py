@@ -29,16 +29,20 @@ def generate_ttf(svg_folder, output_path):
     font.info.ascender = 800
     font.info.descender = -200
 
+    found_glyphs = 0
+
     for filename in os.listdir(svg_folder):
         if not filename.endswith(".svg"):
             continue
 
         parts = filename.split("_")
         if len(parts) != 2:
+            print(f"⚠ שם קובץ לא תקני: {filename}")
             continue
 
         name = parts[1].replace(".svg", "")
         if name not in letter_map:
+            print(f"⚠ שם אות לא ידוע: {name}")
             continue
 
         unicode_val = letter_map[name]
@@ -47,22 +51,31 @@ def generate_ttf(svg_folder, output_path):
         glyph.width = 600
 
         svg_path = os.path.join(svg_folder, filename)
-        doc = minidom.parse(svg_path)
-        paths = doc.getElementsByTagName('path')
-        if not paths:
-            print(f"⚠ לא נמצא path בתוך {filename}")
-            continue
-
-        d = paths[0].getAttribute('d')
-        doc.unlink()
-
-        pen = TTGlyphPen(None)
         try:
-            path = parse_path(d, pen)  # ✅ התיקון המרכזי
-            glyph._glyph = pen.glyph()
-        except Exception as e:
-            print(f"⚠ שגיאה ב־{filename}:", e)
+            doc = minidom.parse(svg_path)
+            paths = doc.getElementsByTagName('path')
+            if not paths:
+                print(f"⚠ לא נמצא <path> בתוך {filename}")
+                continue
 
-    ttf = compileTTF(font)
-    ttf.save(output_path)
-    print("✅ Font saved at:", output_path)
+            d = paths[0].getAttribute('d')
+            doc.unlink()
+
+            pen = TTGlyphPen(None)
+            parse_path(d, pen)
+            glyph._glyph = pen.glyph()
+
+            found_glyphs += 1
+        except Exception as e:
+            print(f"❌ שגיאה ב־{filename}: {e}")
+
+    if found_glyphs == 0:
+        print("❌ לא נמצאו גליפים חוקיים - הפונט לא יישמר.")
+        return
+
+    try:
+        ttf = compileTTF(font)
+        ttf.save(output_path)
+        print(f"✅ הפונט נשמר בהצלחה: {output_path}")
+    except Exception as e:
+        print(f"❌ שגיאה בשמירת פונט: {e}")
