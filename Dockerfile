@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Use Python 3.10 image
 FROM python:3.10-slim
 
@@ -30,5 +29,3 @@ EXPOSE 5000
 
 # Run the server
 CMD ["python", "backend/server.py"]
-=======
->>>>>>> c5fdb8f (הוספת Dockerfile ו־render.yaml לפרויקט)
