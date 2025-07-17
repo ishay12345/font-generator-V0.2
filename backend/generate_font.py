@@ -13,8 +13,8 @@ letter_map = {
     "mem": 0x05DE, "nun": 0x05E0, "samekh": 0x05E1, "ayin": 0x05E2,
     "pe": 0x05E4, "tsadi": 0x05E6, "qof": 0x05E7, "resh": 0x05E8,
     "shin": 0x05E9, "tav": 0x05EA,
-    "kaf_final": 0x05DA, "mem_final": 0x05DD, "nun_final": 0x05DF,
-    "pe_final": 0x05E3, "tsadi_final": 0x05E5
+    "kaffinal": 0x05DA, "memfinal": 0x05DD, "nunfinal": 0x05DF,
+    "pefinal": 0x05E3, "tsadifinal": 0x05E5
 }
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
