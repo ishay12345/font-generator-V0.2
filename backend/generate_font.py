@@ -89,6 +89,7 @@ def generate_ttf(svg_folder, output_path):
     except Exception as e:
         print(f"❌ שגיאה בשמירת פונט: {e}")
 
+# ✅ הוספה חשובה להרצה
 if __name__ == "__main__":
     generate_ttf(SVG_FOLDER, EXPORT_PATH)
 
