@@ -61,18 +61,14 @@ def upload_file():
 
     return jsonify({'message': 'הפונט נוצר בהצלחה!'})
 
-@app.route('/download-font', methods=['GET'])
+@app.route('/download_font')
 def download_font():
-    font_path = os.path.join(EXPORT_FONT_FOLDER, 'hebrew_font.ttf')
+    font_path = os.path.join('exports', 'hebrew_font.ttf')
     if os.path.exists(font_path):
-        return send_file(
-            font_path,
-            as_attachment=True,
-            download_name='hebrew_font.ttf',
-            mimetype='font/ttf'
-        )
+        return send_file(font_path, as_attachment=True)
     else:
-        return jsonify({'error': 'קובץ הפונט לא נמצא'}), 404
+        return jsonify({"error": "קובץ הפונט לא נמצא"}), 404
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
