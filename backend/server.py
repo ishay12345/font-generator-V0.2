@@ -65,7 +65,12 @@ def upload_file():
 def download_font():
     font_path = os.path.join(EXPORT_FONT_FOLDER, 'hebrew_font.ttf')
     if os.path.exists(font_path):
-        return send_file(font_path, as_attachment=True)
+        return send_file(
+            font_path,
+            as_attachment=True,
+            download_name='hebrew_font.ttf',
+            mimetype='font/ttf'
+        )
     else:
         return jsonify({'error': 'קובץ הפונט לא נמצא'}), 404
 
