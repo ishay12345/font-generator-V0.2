@@ -17,6 +17,11 @@ letter_map = {
     "final_pe": 0x05E3, "final_tsadi": 0x05E5
 }
 
+# תיקיות קלט ופלט
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SVG_FOLDER = os.path.join(BASE_DIR, 'svg_letters')  # שים לב שזו התיקייה שלך
+EXPORT_PATH = os.path.join(BASE_DIR, '..', 'exports', 'hebrew_font.ttf')
+
 def generate_ttf(svg_folder, output_path):
     print("🚀 Generating font with defcon + ufo2ft")
     print("📁 SVG folder:", svg_folder)
@@ -74,8 +79,16 @@ def generate_ttf(svg_folder, output_path):
         return
 
     try:
+        # ודא שהתיקייה קיימת
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+        # יצירת ושמירת הפונט
         ttf = compileTTF(font)
         ttf.save(output_path)
         print(f"✅ הפונט נשמר בהצלחה: {output_path}")
     except Exception as e:
         print(f"❌ שגיאה בשמירת פונט: {e}")
+
+if __name__ == "__main__":
+    generate_ttf(SVG_FOLDER, EXPORT_PATH)
+
