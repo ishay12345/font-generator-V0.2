@@ -2,6 +2,7 @@
 from flask import Flask, request, jsonify, send_file, render_template
 from flask_cors import CORS
 import os
+import traceback  # ✅ נוסף כדי להדפיס שגיאות
 from werkzeug.utils import secure_filename
 
 # ייבוא הפונקציה ישירות
@@ -31,20 +32,22 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    if 'file' not in request.files:
-        return jsonify({'error': 'אין קובץ בבקשה'}), 400
-
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'לא נבחר קובץ'}), 400
-
-    # שמירת התמונה
-    filename = secure_filename('all_letters.jpg')
-    img_path = os.path.join(UPLOAD, filename)
-    file.save(img_path)
-
-    # הפעלת השלבים בסקריפטים של הפייתון
     try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'אין קובץ בבקשה'}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'לא נבחר קובץ'}), 400
+
+        # שמירת התמונה
+        filename = secure_filename('all_letters.jpg')
+        img_path = os.path.join(UPLOAD, filename)
+        file.save(img_path)
+
+        print(f"📥 קובץ נשמר: {img_path}")
+
+        # הפעלת השלבים בסקריפטים של הפייתון
         import split_letters
         split_letters.split_letters(img_path, SPLIT)
 
@@ -54,17 +57,19 @@ def upload_file():
         import svg_converter
         svg_converter.convert_to_svg(BW, SVG)
 
-        # כאן במקום subprocess – קריאה ישירה
+        # יצירת הפונט
         font_file = os.path.join(EXPORT, 'hebrew_font.ttf')
         ok = generate_ttf(SVG, font_file)
         if not ok:
             return jsonify({'error': 'כשל ביצירת הפונט'}), 500
 
-    except Exception as e:
-        print("Error pipeline:", e)
-        return jsonify({'error': f'⚠ שגיאה: {e}'}), 500
+        print(f"✅ הפונט נוצר בהצלחה: {font_file}")
+        return jsonify({'message': 'הפונט נוצר בהצלחה!'}), 200
 
-    return jsonify({'message': 'הפונט נוצר בהצלחה!'}), 200
+    except Exception as e:
+        print("❌ שגיאה במהלך העלאת הקובץ או יצירת הפונט:")
+        traceback.print_exc()  # ✅ חשוב! מדפיס שגיאה מלאה לטרמינל
+        return jsonify({'error': f'⚠ שגיאה פנימית: {str(e)}'}), 500
 
 @app.route('/download-font', methods=['GET'])
 def download_font():
@@ -81,4 +86,5 @@ def download_font():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
 
