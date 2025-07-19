@@ -36,8 +36,8 @@ def upload():
     for f in os.listdir(app.config['SPLIT_FOLDER']):
         os.remove(os.path.join(app.config['SPLIT_FOLDER'], f))
 
-    # חיתוך האותיות
-    split_letters_from_image(file_path, app.config['SPLIT_FOLDER'])
+    # חיתוך האותיות (שם הפרמטר תוקן ל־output_path)
+    split_letters_from_image(file_path, output_path=app.config['SPLIT_FOLDER'])
 
     return redirect(url_for('view_letters'))
 
@@ -56,4 +56,5 @@ def letter_file(filename):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
 
