@@ -9,7 +9,6 @@ def split_letters_from_image(image_path, output_dir):
 
     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
-    # סף והרחבה קלה כדי לא לפספס את י
     _, thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
     dilated = cv2.dilate(thresh, kernel, iterations=1)
@@ -51,7 +50,6 @@ def split_letters_from_image(image_path, output_dir):
 
     merged = merge_overlapping_boxes(boxes)
 
-    # סינון אותיות קטנות מדי
     filtered = []
     for x,y,w,h in merged:
         if w*h < 60:
@@ -64,7 +62,6 @@ def split_letters_from_image(image_path, output_dir):
         if not inside:
             filtered.append([x,y,w,h])
 
-    # ארגון לפי שורות
     filtered.sort(key=lambda b: b[1])
     rows = []
     for b in filtered:
@@ -96,7 +93,8 @@ def split_letters_from_image(image_path, output_dir):
         x2,y2 = min(x+w+padding, img.shape[1]), min(y+h+padding, img.shape[0])
         crop = img[y1:y2, x1:x2]
         name = hebrew_letters[i]
-        cv2.imwrite(os.path.join(output_path, f"{i:02d}_{name}.png"), crop)
+        cv2.imwrite(os.path.join(output_dir, f"{i:02d}_{name}.png"), crop)
 
-    print(f"✅ נחתכו {min(27, len(ordered))} אותיות ונשמרו בתיקייה:\n{output_folder}")
+    print(f"✅ נחתכו {min(27, len(ordered))} אותיות ונשמרו בתיקייה:\n{output_dir}")
+
 
