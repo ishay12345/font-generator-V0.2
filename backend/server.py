@@ -1,65 +1,56 @@
-from flask import Flask, request, redirect, url_for, send_from_directory, render_template_string
+from flask import Flask, request, send_from_directory, render_template, redirect, url_for
 import os
-from werkzeug.utils import secure_filename
-from split_letters import split_letters  # ודא שקובץ זה עובד ומחזיר קבצים
-
-UPLOAD_FOLDER = 'backend/uploads'
-OUTPUT_FOLDER = 'backend/split_letters_output'
+import uuid
+from split_letters import split_letters_from_image  # ודא שקיים הקובץ עם הפונקציה
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
+app.config['UPLOAD_FOLDER'] = 'backend/uploads'
+app.config['SPLIT_FOLDER'] = 'backend/split_letters_output'
 
-# דף הבית - טופס העלאה
+# יצירת התיקיות אם לא קיימות
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['SPLIT_FOLDER'], exist_ok=True)
+
+# עמוד הבית (טופס העלאת תמונה)
 @app.route('/')
 def index():
-    return '''
-    <h1>העלה תמונת כתב יד</h1>
-    <form method="post" enctype="multipart/form-data" action="/upload">
-        <input type="file" name="file">
-        <input type="submit" value="העלה">
-    </form>
-    '''
+    return render_template('index.html')
 
-# טיפול בהעלאה
+# עיבוד תמונה אחרי שליחה מהטופס
 @app.route('/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files:
-        return 'לא נשלח קובץ', 400
+def upload():
+    if 'image' not in request.files:
+        return "לא נבחר קובץ", 400
 
-    file = request.files['file']
+    file = request.files['image']
     if file.filename == '':
-        return 'אין שם לקובץ', 400
+        return "הקובץ ריק", 400
 
-    filename = secure_filename(file.filename)
+    # שמירה עם שם ייחודי
+    filename = f"{uuid.uuid4().hex}.png"
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(file_path)
 
-    # נקה את תיקיית הפלט לפני עיבוד חדש
-    for f in os.listdir(app.config['OUTPUT_FOLDER']):
-        os.remove(os.path.join(app.config['OUTPUT_FOLDER'], f))
+    # ניקוי הפלט הקודם
+    for f in os.listdir(app.config['SPLIT_FOLDER']):
+        os.remove(os.path.join(app.config['SPLIT_FOLDER'], f))
 
-    # פילוח האותיות
-    split_letters(file_path, app.config['OUTPUT_FOLDER'])
+    # חיתוך האותיות
+    split_letters_from_image(file_path, app.config['SPLIT_FOLDER'])
 
-    # הפניה לתצוגה
     return redirect(url_for('view_letters'))
 
-# הצגת כל האותיות שנחתכו
+# צפייה באותיות שנחתכו
 @app.route('/view_letters')
 def view_letters():
-    images = os.listdir(app.config['OUTPUT_FOLDER'])
-    images.sort()
-    html = "<h1>תצוגת האותיות</h1>"
-    for img in images:
-        url = url_for('get_letter', filename=img)
-        html += f'<div><img src="{url}" style="height:100px;"><br>{img}</div><hr>'
-    return render_template_string(html)
+    files = os.listdir(app.config['SPLIT_FOLDER'])
+    files = [f for f in files if f.endswith('.png')]
+    return render_template('view_letters.html', files=files)
 
-# שליפת תמונה אחת
+# שליחה של קובץ בודד
 @app.route('/letters/<filename>')
-def get_letter(filename):
-    return send_from_directory(app.config['OUTPUT_FOLDER'], filename)
+def letter_file(filename):
+    return send_from_directory(app.config['SPLIT_FOLDER'], filename)
 
 
 if __name__ == '__main__':
