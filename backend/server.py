@@ -1,39 +1,40 @@
-from flask import Flask, request, send_file
-from split_letters import split_letters_from_file
-import os
-import shutil
-import zipfile
+UPLOAD = os.path.join(BASE, 'uploads')
+SPLIT = os.path.join(BASE, 'split_letters_output')
 
-app = Flask(__name__)
-UPLOAD_FOLDER = 'backend/uploads'
-OUTPUT_FOLDER = 'backend/split_letters_output'
-ZIP_PATH = 'backend/split_letters_output.zip'
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    file = request.files['file']
-    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(file_path)
+from flask import send_from_directory, render_template_string, redirect
 
-    # נקה את הפלט הקודם
-    shutil.rmtree(OUTPUT_FOLDER)
-    os.makedirs(OUTPUT_FOLDER)
+@app.route('/view_letters')
+def view_letters():
+    image_folder = SPLIT
+    image_files = sorted([
+        f for f in os.listdir(image_folder)
+        if f.lower().endswith(('.png', '.jpg', '.jpeg'))
+    ])
 
-    # חתוך את האותיות
-    split_letters_from_file(file_path, OUTPUT_FOLDER)
+    images_html = ''
+    for filename in image_files:
+        images_html += f'''
+            <div style="display:inline-block; margin:10px; text-align:center;">
+                <img src="/get_letter/{filename}" style="height:100px; display:block; margin-bottom:5px;" />
+                <a href="/get_letter/{filename}" download="{filename}">{filename}</a>
+            </div>
+        '''
 
-    # צור ZIP
-    with zipfile.ZipFile(ZIP_PATH, 'w') as zipf:
-        for root, _, files in os.walk(OUTPUT_FOLDER):
-            for filename in files:
-                filepath = os.path.join(root, filename)
-                arcname = os.path.relpath(filepath, OUTPUT_FOLDER)
-                zipf.write(filepath, arcname)
+    return render_template_string(f'''
+        <html dir="rtl" lang="he">
+        <head><title>תצוגת האותיות החתוכות</title></head>
+        <body style="font-family:Arial; text-align:center; background:#fafafa; padding:30px;">
+            <h2>✅ האותיות שנחתכו:</h2>
+            {images_html}
+        </body>
+        </html>
+    ''')
 
-    return send_file(ZIP_PATH, as_attachment=True)
+@app.route('/get_letter/<filename>')
+def get_letter(filename):
+    return send_from_directory(SPLIT, filename)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
