@@ -21,10 +21,6 @@
     .error {
       color: red;
     }
-    #download-btn {
-      display: none;
-      margin-top: 20px;
-    }
   </style>
 </head>
 <body>
@@ -35,16 +31,11 @@
   </form>
   <p id="status"></p>
 
-  <a id="download-btn" href="/download-font" download>
-    <button>⬇ הורד את הפונט</button>
-  </a>
-
   <script>
     document.getElementById('upload-form').addEventListener('submit', function (e) {
       e.preventDefault();
       const fileInput = document.getElementById('file');
       const status = document.getElementById('status');
-      const downloadBtn = document.getElementById('download-btn');
 
       if (!fileInput.files.length) {
         status.innerText = '⚠ לא נבחר קובץ';
@@ -64,7 +55,8 @@
       })
       .then(data => {
         status.innerText = data.message;
-        downloadBtn.style.display = 'inline-block';
+        // מעבר לעמוד תצוגת האותיות
+        window.location.href = "/view_letters";
       })
       .catch(err => {
         status.innerText = '⚠ שגיאה בהעלאה או ביצירת פונט';
