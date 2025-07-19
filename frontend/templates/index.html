@@ -26,7 +26,7 @@
 <body>
   <h1>שליחת תמונה</h1>
   <form id="upload-form" enctype="multipart/form-data">
-    <input type="file" id="file" name="file" required>
+    <input type="file" id="file" name="image" accept="image/*" required>
     <button type="submit">שלח תמונה</button>
   </form>
   <p id="status"></p>
@@ -43,7 +43,7 @@
       }
 
       const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
+      formData.append('image', fileInput.files[0]); // חשוב! שדה בשם "image"
 
       fetch('/upload', {
         method: 'POST',
@@ -51,18 +51,18 @@
       })
       .then(res => {
         if (!res.ok) throw new Error("Server Error");
-        return res.json();
+        return res.text();  // לא מחכים ל־JSON, כי אנחנו מפנים לעמוד חדש
       })
-      .then(data => {
-        status.innerText = data.message;
+      .then(() => {
         // מעבר לעמוד תצוגת האותיות
         window.location.href = "/view_letters";
       })
       .catch(err => {
-        status.innerText = '⚠ שגיאה בהעלאה או ביצירת פונט';
+        status.innerText = '⚠ שגיאה בהעלאה או בעיבוד התמונה';
         console.error(err);
       });
     });
   </script>
 </body>
 </html>
+
