@@ -1,4 +1,4 @@
-from flask import Flask, request, send_from_directory, render_templates, redirect, url_for
+from flask import Flask, request, send_from_directory, render_template, redirect, url_for
 import os
 import uuid
 from split_letters import split_letters_from_image  # ודא שקיים הקובץ עם הפונקציה
@@ -14,7 +14,7 @@ os.makedirs(app.config['SPLIT_FOLDER'], exist_ok=True)
 # עמוד הבית (טופס העלאת תמונה)
 @app.route('/')
 def index():
-    return render_templates('index.html')
+    return render_template('index.html')
 
 # עיבוד תמונה אחרי שליחה מהטופס
 @app.route('/upload', methods=['POST'])
@@ -45,7 +45,7 @@ def upload():
 def view_letters():
     files = os.listdir(app.config['SPLIT_FOLDER'])
     files = [f for f in files if f.endswith('.png')]
-    return render_templates('view_letters.html', files=files)
+    return render_template('view_letters.html', files=files)
 
 # שליחה של קובץ בודד
 @app.route('/letters/<filename>')
