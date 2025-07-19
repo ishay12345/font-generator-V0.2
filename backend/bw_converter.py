@@ -14,6 +14,7 @@ def convert_to_bw(input_dir, output_dir):
         if gray is None:
             continue
 
+        # הפיכה לשחור-לבן בצורה חדה
         _, bw = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
         # לוודא שהאות שחורה והרקע לבן
@@ -24,4 +25,4 @@ def convert_to_bw(input_dir, output_dir):
 
         out_path = os.path.join(output_dir, fname)
         cv2.imwrite(out_path, bw)
-        print(f"✅ BW: {fname} → {out_path}")
+        print(f"✅ {fname} → {out_path}")
