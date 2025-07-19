@@ -3,7 +3,8 @@ import os
 import uuid
 from split_letters import split_letters_from_image  # ודא שקיים הקובץ עם הפונקציה
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='../frontend/templates')
+
 app.config['UPLOAD_FOLDER'] = 'backend/uploads'
 app.config['SPLIT_FOLDER'] = 'backend/split_letters_output'
 
