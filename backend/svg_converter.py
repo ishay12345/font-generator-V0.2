@@ -9,8 +9,8 @@ def convert_to_svg(input_dir, output_dir):
         if not fname.lower().endswith(".png"):
             continue
 
-        # שם האות לפי שם הקובץ (לפני ה־.png)
-        letter_name = os.path.splitext(fname)[0].split("_", 1)[-1]  # לדוג' "23_final_mem" → "mem"
+        # שם האות לפי שם הקובץ (למשל: "23_final_mem" → "final_mem")
+        letter_name = os.path.splitext(fname)[0].split("_", 1)[-1]
 
         input_path = os.path.join(input_dir, fname)
         bmp_path   = input_path.replace(".png", ".bmp")
@@ -23,11 +23,10 @@ def convert_to_svg(input_dir, output_dir):
         # המרה ל־SVG עם potrace
         subprocess.run(["potrace", bmp_path, "-s", "-o", svg_path])
 
-        # הוספת id לקובץ svg לפי שם האות
+        # הוספת ID לפי שם האות
         with open(svg_path, "r", encoding="utf-8") as f:
             svg_content = f.read()
 
-        # מוסיף id ייחודי בשם האות לתוך ה־<path ... /> (פשוט יחסית)
         svg_content = svg_content.replace("<path", f'<path id="{letter_name}"', 1)
 
         with open(svg_path, "w", encoding="utf-8") as f:
