@@ -1,3 +1,5 @@
+# backend/split_letters.py
+
 import cv2
 import os
 import numpy as np
@@ -49,7 +51,7 @@ def split_letters(image_path, output_folder):
 
     merged = merge_overlapping_boxes(boxes)
 
-    # הורדנו את הסף ל-60 כדי לא לפספס אותיות קטנות
+    # סינון אותיות קטנות מדי
     filtered = []
     for x,y,w,h in merged:
         if w*h < 60:
@@ -76,18 +78,16 @@ def split_letters(image_path, output_folder):
         if not placed:
             rows.append([b])
 
-    # מיין כל שורה מימין לשמאל
     rows.sort(key=lambda r: r[0][1])
     ordered = []
     for row in rows:
         row.sort(key=lambda b: -b[0])
         ordered.extend(row)
 
-    # שמות האותיות
     hebrew_letters = [
         'alef','bet','gimel','dalet','he','vav','zayin','het','tet',
         'yod','kaf','lamed','mem','nun','samekh','ayin','pe','tsadi',
-        'qof','resh','shin','tav','kaffinal','memfinal','nunfinal','pefinal','tsadifinal'
+        'qof','resh','shin','tav','final_kaf','final_mem','final_nun','final_pe','final_tsadi'
     ]
 
     padding = 10
@@ -99,3 +99,4 @@ def split_letters(image_path, output_folder):
         cv2.imwrite(os.path.join(output_folder, f"{i:02d}_{name}.png"), crop)
 
     print(f"✅ נחתכו {min(27, len(ordered))} אותיות ונשמרו בתיקייה:\n{output_folder}")
+
