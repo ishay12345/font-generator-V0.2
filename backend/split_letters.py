@@ -96,7 +96,7 @@ def split_letters_from_image(image_path, output_dir):
         x2,y2 = min(x+w+padding, img.shape[1]), min(y+h+padding, img.shape[0])
         crop = img[y1:y2, x1:x2]
         name = hebrew_letters[i]
-        cv2.imwrite(os.path.join(output_folder, f"{i:02d}_{name}.png"), crop)
+        cv2.imwrite(os.path.join(output_path, f"{i:02d}_{name}.png"), crop)
 
     print(f"✅ נחתכו {min(27, len(ordered))} אותיות ונשמרו בתיקייה:\n{output_folder}")
 
