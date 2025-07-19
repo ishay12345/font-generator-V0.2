@@ -4,8 +4,8 @@ import cv2
 import os
 import numpy as np
 
-def split_letters(image_path, output_folder):
-    os.makedirs(output_folder, exist_ok=True)
+def split_letters_from_image(image_path, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
 
     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
