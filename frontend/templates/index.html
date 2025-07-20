@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="he">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <title>ממיר כתב יד לפונט</title>
@@ -11,47 +11,30 @@
             text-align: center;
             padding: 40px;
         }
-
-        h1 {
-            color: #333;
-        }
-
         form {
             background: white;
             padding: 30px;
-            border-radius: 10px;
+            border-radius: 8px;
             display: inline-block;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
-
-        input[type="file"] {
-            margin: 20px 0;
-        }
-
         .message {
             margin-top: 20px;
             font-weight: bold;
         }
-
-        .preview {
-            margin-top: 30px;
-        }
-
-        .letters-container {
+        .letters {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            margin-top: 20px;
             gap: 10px;
+            margin-top: 30px;
         }
-
-        .letters-container img {
+        .letters img {
             width: 60px;
             height: 60px;
             object-fit: contain;
             border: 1px solid #ccc;
-            border-radius: 6px;
-            padding: 5px;
+            border-radius: 4px;
             background: white;
         }
     </style>
@@ -61,65 +44,48 @@
 <h1>העלאת כתב יד</h1>
 
 <form id="uploadForm" enctype="multipart/form-data">
-    <input type="file" name="image" accept="image/*" required><br>
+    <input type="file" name="image" accept="image/*" required><br><br>
     <button type="submit">שלח</button>
 </form>
 
 <div class="message" id="message"></div>
-<div class="preview" id="preview"></div>
-<div class="letters-container" id="lettersContainer"></div>
+<div class="letters" id="lettersContainer"></div>
 
 <script>
-    const form = document.getElementById('uploadForm');
-    const message = document.getElementById('message');
-    const preview = document.getElementById('preview');
-    const lettersContainer = document.getElementById('lettersContainer');
+const form = document.getElementById('uploadForm');
+const message = document.getElementById('message');
+const lettersContainer = document.getElementById('lettersContainer');
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        preview.innerHTML = '';
-        lettersContainer.innerHTML = '';
+form.addEventListener('submit', async e => {
+    e.preventDefault();
+    message.textContent = '';
+    lettersContainer.innerHTML = '';
 
-        const formData = new FormData(form);
+    const formData = new FormData(form);
+    const res = await fetch('/upload', { method: 'POST', body: formData });
+    const data = await res.json();
 
-        try {
-            const response = await fetch('/upload', {
-                method: 'POST',
-                body: formData
-            });
+    if (!data.success) {
+        message.textContent = '❌ ' + (data.error||'שגיאה בלתי צפויה');
+        message.style.color = 'red';
+        return;
+    }
 
-            const data = await response.json();
+    message.textContent = '✔️ התמונה הועלתה בהצלחה!';
+    message.style.color = 'green';
 
-            if (response.ok && data.success) {
-                message.textContent = "✔️ התמונה הועלתה בהצלחה!";
-                message.style.color = 'green';
-
-                if (data.letters && data.letters.length > 0) {
-                    data.letters.forEach(letterUrl => {
-                        const img = document.createElement('img');
-                        img.src = letterUrl;
-                        img.alt = "אות חתוכה";
-                        lettersContainer.appendChild(img);
-                    });
-                } else {
-                    message.textContent += " אך לא נמצאו אותיות.";
-                }
-
-            } else {
-                const errorMsg = data.error || "שגיאה לא ידועה.";
-                message.textContent = "❌ שגיאה בהעלאה: " + errorMsg;
-                message.style.color = 'red';
-            }
-
-        } catch (err) {
-            message.textContent = "❌ שגיאה כללית: " + err.message;
-            message.style.color = 'red';
-            console.error(err);
-        }
-    });
+    if (data.letters.length === 0) {
+        message.textContent += ' לא נמצאו אותיות.';
+    } else {
+        data.letters.forEach(url => {
+            const img = document.createElement('img');
+            img.src = url;
+            lettersContainer.appendChild(img);
+        });
+    }
+});
 </script>
 
 </body>
 </html>
-
 
