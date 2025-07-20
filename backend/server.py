@@ -1,6 +1,6 @@
 from flask import Flask, request, render_template
 import os
-from split_letters import split_image_to_letters
+from split_letters import split_letters_from_image
 from bw_converter import convert_to_bw
 
 UPLOAD_FOLDER = 'backend/uploads'
@@ -28,7 +28,7 @@ def upload_file():
 
     try:
         # שלב 1 – חיתוך
-        split_image_to_letters(filepath, output_dir=SPLIT_FOLDER)
+        split_letters_from_image(filepath, output_dir=SPLIT_FOLDER)
 
         # שלב 2 – המרה לשחור־לבן
         convert_to_bw(input_dir=SPLIT_FOLDER, output_dir=BW_FOLDER)
