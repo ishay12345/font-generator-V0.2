@@ -47,14 +47,25 @@ def upload_file():
         print("✅  ולהפוך לSVGהצליח לחתוך ולהמיר לשחור לבן")  # יופיע בלוג של Render
         # שלב 3 – מצא את הקבצים המומרים
         bw_images = sorted(os.listdir(BW_FOLDER))
-        bw_image_paths = [f'bw_letters/{filename}' for filename in bw_images]
+svg_images = sorted(os.listdir(SVG_FOLDER))
 
-        return render_template('index.html', bw_images=bw_image_paths)
+# תוצאה של כל שלב
+cutting_done = len(os.listdir(SPLIT_FOLDER)) > 0
+bw_done = len(bw_images) > 0
+svg_done = len(svg_images) > 0
 
-    except Exception as e:
-        print("❌ שגיאה בתהליך:", e)
-        return f'Error during processing: {str(e)}'
+# הדפסות ללוג של Render (לא חובה ל-HTML, רק לדיבאג)
+print(f"✂️ חיתוך אותיות: {'הושלם' if cutting_done else 'נכשל'}")
+print(f"🖤 המרה לשחור-לבן: {'הושלם' if bw_done else 'נכשל'}")
+print(f"🟢 המרה ל-SVG: {'הושלם' if svg_done else 'נכשל'}")
 
+# שלח תשובה ל-HTML
+return render_template(
+    'result.html',
+    cutting_done=cutting_done,
+    bw_done=bw_done,
+    svg_done=svg_done
+)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
