@@ -1,7 +1,7 @@
-from flask import Flask, request, send_from_directory, render_template, redirect, url_for
+from flask import Flask, request, send_from_directory, render_template, jsonify
 import os
 import uuid
-from split_letters import split_letters_from_image  # ודא שקיים הקובץ עם הפונקציה
+from split_letters import split_letters_from_image  # ודא שהקובץ קיים
 
 app = Flask(__name__, template_folder='../frontend/templates')
 
@@ -36,19 +36,12 @@ def upload():
     for f in os.listdir(app.config['SPLIT_FOLDER']):
         os.remove(os.path.join(app.config['SPLIT_FOLDER'], f))
 
-    # חיתוך האותיות (שם הפרמטר תוקן ל־output_path)
+    # חיתוך האותיות
     split_letters_from_image(file_path, output_dir=app.config['SPLIT_FOLDER'])
 
-    return redirect(url_for('view_letters'))
+    return jsonify({"success": True})
 
-# צפייה באותיות שנחתכו
-@app.route('/view_letters')
-def view_letters():
-    files = os.listdir(app.config['SPLIT_FOLDER'])
-    files = [f for f in files if f.endswith('.png')]
-    return render_template('view_letters.html', files=files)
-
-# שליחה של קובץ בודד
+# שליחה של קובץ אות בודדת
 @app.route('/letters/<filename>')
 def letter_file(filename):
     return send_from_directory(app.config['SPLIT_FOLDER'], filename)
@@ -56,5 +49,6 @@ def letter_file(filename):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
 
 
