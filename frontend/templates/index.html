@@ -51,6 +51,16 @@
 <div class="message" id="message"></div>
 <div class="letters" id="lettersContainer"></div>
 
+<!-- ✅ הצגת התמונות במקרה והן נשלחות מהשרת -->
+{% if images %}
+    <h2>תצוגת אותיות בשחור-לבן:</h2>
+    <div class="letters">
+        {% for img in images %}
+            <img src="{{ img }}" alt="bw letter">
+        {% endfor %}
+    </div>
+{% endif %}
+
 <script>
 const form = document.getElementById('uploadForm');
 const message = document.getElementById('message');
@@ -74,10 +84,10 @@ form.addEventListener('submit', async e => {
     message.textContent = '✔️ התמונה הועלתה בהצלחה!';
     message.style.color = 'green';
 
-    if (data.bw_letters.length === 0) {
-        message.textContent += ' לא נמצאו אותיות בשחור־לבן.';
+    if (data.letters.length === 0) {
+        message.textContent += ' לא נמצאו אותיות.';
     } else {
-        data.bw_letters.forEach(url => {
+        data.letters.forEach(url => {
             const img = document.createElement('img');
             img.src = url;
             lettersContainer.appendChild(img);
