@@ -37,7 +37,7 @@ def upload():
         os.remove(os.path.join(app.config['SPLIT_FOLDER'], f))
 
     # חיתוך האותיות (שם הפרמטר תוקן ל־output_path)
-    split_letters_from_image(file_path, output_path=app.config['SPLIT_FOLDER'])
+    split_letters_from_image(file_path, output_dir=app.config['SPLIT_FOLDER'])
 
     return redirect(url_for('view_letters'))
 
