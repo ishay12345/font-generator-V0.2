@@ -7,8 +7,10 @@ UPLOAD_FOLDER = 'backend/uploads'
 SPLIT_FOLDER = 'backend/split_letters_output'
 BW_FOLDER = 'backend/bw_letters'
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATE_DIR = os.path.join(BASE_DIR, '..', 'frontend', 'templates')
+
+app = Flask(__name__, template_folder=TEMPLATE_DIR)
 
 @app.route('/')
 def index():
