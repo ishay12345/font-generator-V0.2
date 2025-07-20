@@ -33,37 +33,15 @@
             font-weight: bold;
         }
 
-        .images {
-            margin-top: 40px;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 15px;
+        .preview {
+            margin-top: 30px;
         }
 
-        .image-container {
-            background: white;
-            padding: 10px;
+        .preview img {
+            max-width: 300px;
+            border: 1px solid #ccc;
             border-radius: 8px;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-
-        .image-container img {
-            max-width: 100px;
-            height: auto;
-            display: block;
-            margin-bottom: 8px;
-        }
-
-        .download-button {
-            text-decoration: none;
-            color: white;
-            background-color: #4CAF50;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 14px;
-            display: inline-block;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -77,18 +55,16 @@
 </form>
 
 <div class="message" id="message"></div>
-
-<div class="images" id="imagesContainer"></div>
+<div class="preview" id="preview"></div>
 
 <script>
     const form = document.getElementById('uploadForm');
     const message = document.getElementById('message');
-    const imagesContainer = document.getElementById('imagesContainer');
+    const preview = document.getElementById('preview');
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        message.textContent = '';
-        imagesContainer.innerHTML = '';
+        preview.innerHTML = ''; // מנקה תמונה קודמת
 
         const formData = new FormData(form);
 
@@ -102,30 +78,14 @@
                 const data = await response.json();
                 message.textContent = "✔️ התמונה הועלתה בהצלחה!";
                 message.style.color = 'green';
+                console.log(data);
 
-                // בקשה לקבל את כל הקבצים אחרי חיתוך
-                const filesResponse = await fetch('/list_letters');
-                const files = await filesResponse.json();
-
-                files.forEach(file => {
-                    const container = document.createElement('div');
-                    container.className = 'image-container';
-
+                if (data.filename) {
                     const img = document.createElement('img');
-                    img.src = `/letters/${file}`;
-                    img.alt = file;
-
-                    const downloadLink = document.createElement('a');
-                    downloadLink.href = `/letters/${file}`;
-                    downloadLink.download = file;
-                    downloadLink.className = 'download-button';
-                    downloadLink.textContent = 'הורד';
-
-                    container.appendChild(img);
-                    container.appendChild(downloadLink);
-                    imagesContainer.appendChild(container);
-                });
-
+                    img.src = `/uploads/${data.filename}`;
+                    img.alt = "תצוגה מקדימה של התמונה";
+                    preview.appendChild(img);
+                }
             } else {
                 const errorText = await response.text();
                 message.textContent = "❌ שגיאה בהעלאה: " + errorText;
@@ -142,4 +102,5 @@
 
 </body>
 </html>
+
 
