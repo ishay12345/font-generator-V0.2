@@ -46,26 +46,28 @@ def upload_file():
 
         print("✅  ולהפוך לSVGהצליח לחתוך ולהמיר לשחור לבן")  # יופיע בלוג של Render
         # שלב 3 – מצא את הקבצים המומרים
+                # שלב 3 – מצא את הקבצים המומרים
         bw_images = sorted(os.listdir(BW_FOLDER))
-svg_images = sorted(os.listdir(SVG_FOLDER))
+        svg_images = sorted(os.listdir(SVG_FOLDER))
 
-# תוצאה של כל שלב
-cutting_done = len(os.listdir(SPLIT_FOLDER)) > 0
-bw_done = len(bw_images) > 0
-svg_done = len(svg_images) > 0
+        # תוצאה של כל שלב
+        cutting_done = len(os.listdir(SPLIT_FOLDER)) > 0
+        bw_done = len(bw_images) > 0
+        svg_done = len(svg_images) > 0
 
-# הדפסות ללוג של Render (לא חובה ל-HTML, רק לדיבאג)
-print(f"✂️ חיתוך אותיות: {'הושלם' if cutting_done else 'נכשל'}")
-print(f"🖤 המרה לשחור-לבן: {'הושלם' if bw_done else 'נכשל'}")
-print(f"🟢 המרה ל-SVG: {'הושלם' if svg_done else 'נכשל'}")
+        # הדפסות ללוג של Render (לא חובה ל-HTML, רק לדיבאג)
+        print(f"✂️ חיתוך אותיות: {'הושלם' if cutting_done else 'נכשל'}")
+        print(f"🖤 המרה לשחור-לבן: {'הושלם' if bw_done else 'נכשל'}")
+        print(f"🟢 המרה ל-SVG: {'הושלם' if svg_done else 'נכשל'}")
 
-# שלח תשובה ל-HTML
-return render_template(
-    'result.html',
-    cutting_done=cutting_done,
-    bw_done=bw_done,
-    svg_done=svg_done
-)
+        # שלח תשובה ל-HTML
+        return render_template(
+            'result.html',
+            cutting_done=cutting_done,
+            bw_done=bw_done,
+            svg_done=svg_done
+        )
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
