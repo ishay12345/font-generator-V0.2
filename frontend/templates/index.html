@@ -37,11 +37,22 @@
             margin-top: 30px;
         }
 
-        .preview img {
-            max-width: 300px;
+        .letters-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 10px;
+        }
+
+        .letters-container img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
             border: 1px solid #ccc;
-            border-radius: 8px;
-            margin-top: 10px;
+            border-radius: 6px;
+            padding: 5px;
+            background: white;
         }
     </style>
 </head>
@@ -56,15 +67,18 @@
 
 <div class="message" id="message"></div>
 <div class="preview" id="preview"></div>
+<div class="letters-container" id="lettersContainer"></div>
 
 <script>
     const form = document.getElementById('uploadForm');
     const message = document.getElementById('message');
     const preview = document.getElementById('preview');
+    const lettersContainer = document.getElementById('lettersContainer');
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        preview.innerHTML = ''; // מנקה תמונה קודמת
+        preview.innerHTML = '';
+        lettersContainer.innerHTML = '';
 
         const formData = new FormData(form);
 
@@ -74,24 +88,29 @@
                 body: formData
             });
 
-            if (response.ok) {
-                const data = await response.json();
+            const data = await response.json();
+
+            if (response.ok && data.success) {
                 message.textContent = "✔️ התמונה הועלתה בהצלחה!";
                 message.style.color = 'green';
-                console.log(data);
 
-                if (data.filename) {
-                    const img = document.createElement('img');
-                    img.src = `/uploads/${data.filename}`;
-                    img.alt = "תצוגה מקדימה של התמונה";
-                    preview.appendChild(img);
+                if (data.letters && data.letters.length > 0) {
+                    data.letters.forEach(letterUrl => {
+                        const img = document.createElement('img');
+                        img.src = letterUrl;
+                        img.alt = "אות חתוכה";
+                        lettersContainer.appendChild(img);
+                    });
+                } else {
+                    message.textContent += " אך לא נמצאו אותיות.";
                 }
+
             } else {
-                const errorText = await response.text();
-                message.textContent = "❌ שגיאה בהעלאה: " + errorText;
+                const errorMsg = data.error || "שגיאה לא ידועה.";
+                message.textContent = "❌ שגיאה בהעלאה: " + errorMsg;
                 message.style.color = 'red';
-                console.error(errorText);
             }
+
         } catch (err) {
             message.textContent = "❌ שגיאה כללית: " + err.message;
             message.style.color = 'red';
