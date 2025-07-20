@@ -19,15 +19,25 @@ os.makedirs(app.config['SPLIT_FOLDER'], exist_ok=True)
 def index():
     return render_template('index.html')
 
-# נקודת קבלת קובץ התמונה
-@app.route('/upload', methods=['POST'])
-def upload():
-    if 'image' not in request.files:
-        return "לא נבחר קובץ", 400
 
-    file = request.files['image']
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    # ... קוד של בדיקה וטעינה ...
+
+    if 'file' not in request.files:
+        return jsonify({'error': 'לא נשלח קובץ'}), 400
+
+    file = request.files['file']
     if file.filename == '':
-        return "הקובץ ריק", 400
+        return jsonify({'error': 'שם קובץ ריק'}), 400
+
+    if file:
+        filename = secure_filename(file.filename)
+        save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(save_path)
+
+        # תוכל גם להחזיר את הנתיב לקובץ לצורך תצוגה
+        return jsonify({'success': True, 'filename': filename})
 
     # שמירת הקובץ בשם ייחודי
     filename = f"{uuid.uuid4().hex}.png"
