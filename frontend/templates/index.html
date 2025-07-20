@@ -1,22 +1,70 @@
 <!DOCTYPE html>
-<html lang="he">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>העלאת כתב יד</title>
+    <title>ממיר כתב יד לפונט</title>
+    <style>
+        body {
+            direction: rtl;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            text-align: center;
+            padding: 40px;
+        }
+        form {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            display: inline-block;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .message {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .letters {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 30px;
+        }
+        .letters img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+        }
+    </style>
 </head>
 <body>
-    <h2>העלה תמונה</h2>
-    <form method="POST" action="/upload" enctype="multipart/form-data">
-        <input type="file" name="file" accept="image/*" required>
-        <input type="submit" value="העלה">
-    </form>
 
-    {% if bw_images %}
-        <h2>תצוגת אותיות (שחור־לבן):</h2>
-        {% for image_path in bw_images %}
-            <img src="{{ url_for('static', filename=image_path) }}" style="height: 100px; margin: 5px;">
-        {% endfor %}
+<h1>העלאת כתב יד</h1>
+
+<form action="/upload" method="post" enctype="multipart/form-data">
+    <input type="file" name="image" accept="image/*" required><br><br>
+    <button type="submit">שלח</button>
+</form>
+
+<div class="message" id="message">
+    {% if success %}
+        ✔️ התמונה הועלתה והומרה בהצלחה!
+    {% elif error %}
+        ❌ {{ error }}
     {% endif %}
+</div>
+
+<!-- ✅ תצוגת האותיות בשחור לבן -->
+{% if images %}
+    <h2>תצוגת אותיות בשחור-לבן:</h2>
+    <div class="letters">
+        {% for img in images %}
+            <img src="{{ img }}" alt="bw letter">
+        {% endfor %}
+    </div>
+{% endif %}
+
 </body>
 </html>
-
