@@ -1,101 +1,22 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="he">
 <head>
     <meta charset="UTF-8">
-    <title>ממיר כתב יד לפונט</title>
-    <style>
-        body {
-            direction: rtl;
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            text-align: center;
-            padding: 40px;
-        }
-        form {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            display: inline-block;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        .message {
-            margin-top: 20px;
-            font-weight: bold;
-        }
-        .letters {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 10px;
-            margin-top: 30px;
-        }
-        .letters img {
-            width: 60px;
-            height: 60px;
-            object-fit: contain;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            background: white;
-        }
-    </style>
+    <title>העלאת כתב יד</title>
 </head>
 <body>
+    <h2>העלה תמונה</h2>
+    <form method="POST" action="/upload" enctype="multipart/form-data">
+        <input type="file" name="file" accept="image/*" required>
+        <input type="submit" value="העלה">
+    </form>
 
-<h1>העלאת כתב יד</h1>
-
-<form id="uploadForm" enctype="multipart/form-data">
-    <input type="file" name="image" accept="image/*" required><br><br>
-    <button type="submit">שלח</button>
-</form>
-
-<div class="message" id="message"></div>
-<div class="letters" id="lettersContainer"></div>
-
-<!-- ✅ הצגת התמונות במקרה והן נשלחות מהשרת -->
-{% if images %}
-    <h2>תצוגת אותיות בשחור-לבן:</h2>
-    <div class="letters">
-        {% for img in images %}
-            <img src="{{ img }}" alt="bw letter">
+    {% if bw_images %}
+        <h2>תצוגת אותיות (שחור־לבן):</h2>
+        {% for image_path in bw_images %}
+            <img src="{{ url_for('static', filename=image_path) }}" style="height: 100px; margin: 5px;">
         {% endfor %}
-    </div>
-{% endif %}
-
-<script>
-const form = document.getElementById('uploadForm');
-const message = document.getElementById('message');
-const lettersContainer = document.getElementById('lettersContainer');
-
-form.addEventListener('submit', async e => {
-    e.preventDefault();
-    message.textContent = '';
-    lettersContainer.innerHTML = '';
-
-    const formData = new FormData(form);
-    const res = await fetch('/upload', { method: 'POST', body: formData });
-    const data = await res.json();
-
-    if (!data.success) {
-        message.textContent = '❌ ' + (data.error||'שגיאה בלתי צפויה');
-        message.style.color = 'red';
-        return;
-    }
-
-    message.textContent = '✔️ התמונה הועלתה בהצלחה!';
-    message.style.color = 'green';
-
-    if (data.letters.length === 0) {
-        message.textContent += ' לא נמצאו אותיות.';
-    } else {
-        data.letters.forEach(url => {
-            const img = document.createElement('img');
-            img.src = url;
-            lettersContainer.appendChild(img);
-        });
-    }
-});
-</script>
-
+    {% endif %}
 </body>
 </html>
 
