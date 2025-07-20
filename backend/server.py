@@ -1,53 +1,64 @@
-from flask import Flask, request, send_from_directory, render_template, jsonify
 import os
 import uuid
-from split_letters import split_letters_from_image  # ודא שזה קיים
+from flask import Flask, request, jsonify, render_template, send_from_directory
+from split_letters import split_letters_from_image  # ודא שהפונקציה קיימת
 
-app = Flask(__name__, template_folder='../frontend/templates')
+# ----  הגדרת נתיבים מוחלטים  ----
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_DIR = os.path.join(BASE_DIR, 'uploads')
+SPLIT_DIR  = os.path.join(BASE_DIR, 'split_letters_output')
 
-app.config['UPLOAD_FOLDER'] = 'backend/uploads'
-app.config['SPLIT_FOLDER'] = 'backend/split_letters_output'
+for d in (UPLOAD_DIR, SPLIT_DIR):
+    os.makedirs(d, exist_ok=True)
 
-# יצירת התיקיות אם לא קיימות
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(app.config['SPLIT_FOLDER'], exist_ok=True)
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, '..', 'frontend', 'templates'),
+    static_folder=os.path.join(BASE_DIR, '..', 'frontend', 'static')
+)
 
-# עמוד הבית
+# ----  עמוד הבית (טופס העלאה)  ----
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# קבלת קבצים מהתיקייה של האותיות
-@app.route('/letters/<filename>')
-def letter_file(filename):
-    return send_from_directory(app.config['SPLIT_FOLDER'], filename)
-
-# שליחת תמונה מהמשתמש ופיצול אותיות
+# ----  העלאת התמונה וחיתוך האותיות  ----
 @app.route('/upload', methods=['POST'])
 def upload():
     if 'image' not in request.files:
-        return jsonify({"success": False, "error": "לא נבחר קובץ"}), 400
+        return jsonify(success=False, error='לא נבחר קובץ'), 400
 
     file = request.files['image']
     if file.filename == '':
-        return jsonify({"success": False, "error": "שם קובץ ריק"}), 400
+        return jsonify(success=False, error='שם קובץ ריק'), 400
 
+    # שמירת הקובץ עם שם ייחודי
     filename = f"{uuid.uuid4().hex}.png"
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    file.save(file_path)
+    img_path = os.path.join(UPLOAD_DIR, filename)
+    file.save(img_path)
 
-    # ניקוי קבצים קודמים
-    for f in os.listdir(app.config['SPLIT_FOLDER']):
-        os.remove(os.path.join(app.config['SPLIT_FOLDER'], f))
+    # ניקוי תיקיית הפלט
+    for f in os.listdir(SPLIT_DIR):
+        os.remove(os.path.join(SPLIT_DIR, f))
 
-    # חיתוך האותיות
-    split_letters_from_image(file_path, output_dir=app.config['SPLIT_FOLDER'])
+    # קריאה לפונקציית החיתוך
+    try:
+        split_letters_from_image(img_path, SPLIT_DIR)
+    except Exception as e:
+        return jsonify(success=False, error=f'שגיאה בחיתוך: {e}'), 500
 
-    # בניית רשימת קישורים לתמונות החתוכות
-    letters_files = sorted(os.listdir(app.config['SPLIT_FOLDER']))
-    letters_urls = [f"/letters/{name}" for name in letters_files]
+    # בניית מערך כתובות התמונות שנוצרו
+    letters = sorted([
+        f for f in os.listdir(SPLIT_DIR)
+        if f.lower().endswith(('.png', '.svg'))
+    ])
+    urls = [f"/letters/{name}" for name in letters]
+    return jsonify(success=True, letters=urls)
 
-    return jsonify({"success": True, "letters": letters_urls})
+# ----  שליחת קובץ אות בודדת  ----
+@app.route('/letters/<filename>')
+def letters(filename):
+    return send_from_directory(SPLIT_DIR, filename)
 
 
 if __name__ == '__main__':
