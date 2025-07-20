@@ -1,9 +1,94 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+    <meta charset="UTF-8">
+    <title>ממיר כתב יד לפונט</title>
+    <style>
+        body {
+            direction: rtl;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            text-align: center;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        form {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            display: inline-block;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        input[type="file"] {
+            margin: 20px 0;
+        }
+
+        .message {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        .images {
+            margin-top: 40px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .image-container {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .image-container img {
+            max-width: 100px;
+            height: auto;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .download-button {
+            text-decoration: none;
+            color: white;
+            background-color: #4CAF50;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+<h1>העלאת כתב יד</h1>
+
+<form id="uploadForm" enctype="multipart/form-data">
+    <input type="file" name="image" accept="image/*" required><br>
+    <button type="submit">שלח</button>
+</form>
+
+<div class="message" id="message"></div>
+
+<div class="images" id="imagesContainer"></div>
+
 <script>
     const form = document.getElementById('uploadForm');
     const message = document.getElementById('message');
+    const imagesContainer = document.getElementById('imagesContainer');
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        message.textContent = '';
+        imagesContainer.innerHTML = '';
 
         const formData = new FormData(form);
 
@@ -15,24 +100,32 @@
 
             if (response.ok) {
                 const data = await response.json();
-                message.innerHTML = "✔️ התמונה הועלתה בהצלחה!<br>ממתין לקבצים...";
-
-                // הבא את רשימת הקבצים (PNG, SVG וכו')
-                const res = await fetch('/list_letters');
-                const files = await res.json();
-
-                if (files.length > 0) {
-                    let html = `<h3>📦 הורדת הקבצים:</h3><ul>`;
-                    files.forEach(name => {
-                        html += `<li><a href="/download/${name}" download>${name}</a></li>`;
-                    });
-                    html += `</ul>`;
-                    message.innerHTML += html;
-                } else {
-                    message.innerHTML += "<br>לא נמצאו קבצים.";
-                }
-
+                message.textContent = "✔️ התמונה הועלתה בהצלחה!";
                 message.style.color = 'green';
+
+                // בקשה לקבל את כל הקבצים אחרי חיתוך
+                const filesResponse = await fetch('/list_letters');
+                const files = await filesResponse.json();
+
+                files.forEach(file => {
+                    const container = document.createElement('div');
+                    container.className = 'image-container';
+
+                    const img = document.createElement('img');
+                    img.src = `/letters/${file}`;
+                    img.alt = file;
+
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = `/letters/${file}`;
+                    downloadLink.download = file;
+                    downloadLink.className = 'download-button';
+                    downloadLink.textContent = 'הורד';
+
+                    container.appendChild(img);
+                    container.appendChild(downloadLink);
+                    imagesContainer.appendChild(container);
+                });
+
             } else {
                 const errorText = await response.text();
                 message.textContent = "❌ שגיאה בהעלאה: " + errorText;
@@ -47,4 +140,6 @@
     });
 </script>
 
+</body>
+</html>
 
