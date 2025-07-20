@@ -1,7 +1,7 @@
 from flask import Flask, request, send_from_directory, render_template, jsonify
 import os
 import uuid
-from split_letters import split_letters_from_image  # ודא שהקובץ קיים
+from split_letters import split_letters_from_image  # ודא שזה קיים
 
 app = Flask(__name__, template_folder='../frontend/templates')
 
@@ -12,12 +12,17 @@ app.config['SPLIT_FOLDER'] = 'backend/split_letters_output'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['SPLIT_FOLDER'], exist_ok=True)
 
-# עמוד הבית (טופס העלאת תמונה)
+# עמוד הבית
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# עיבוד תמונה אחרי שליחה מהטופס
+# קבלת קבצים מהתיקייה של האותיות
+@app.route('/letters/<filename>')
+def letter_file(filename):
+    return send_from_directory(app.config['SPLIT_FOLDER'], filename)
+
+# שליחת תמונה מהמשתמש ופיצול אותיות
 @app.route('/upload', methods=['POST'])
 def upload():
     if 'image' not in request.files:
@@ -25,34 +30,25 @@ def upload():
 
     file = request.files['image']
     if file.filename == '':
-        return jsonify({"success": False, "error": "הקובץ ריק"}), 400
+        return jsonify({"success": False, "error": "שם קובץ ריק"}), 400
 
-    # שמירה עם שם ייחודי
     filename = f"{uuid.uuid4().hex}.png"
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(file_path)
 
-    # ניקוי הפלט הקודם
+    # ניקוי קבצים קודמים
     for f in os.listdir(app.config['SPLIT_FOLDER']):
         os.remove(os.path.join(app.config['SPLIT_FOLDER'], f))
 
     # חיתוך האותיות
     split_letters_from_image(file_path, output_dir=app.config['SPLIT_FOLDER'])
 
-    # שלח ללקוח רשימת תמונות החתוכות
-    letter_images = sorted([
-        f for f in os.listdir(app.config['SPLIT_FOLDER'])
-        if f.endswith('.png') or f.endswith('.svg')
-    ])
-    return jsonify({
-        "success": True,
-        "letters": [f"/letters/{name}" for name in letter_images]
-    })
+    # בניית רשימת קישורים לתמונות החתוכות
+    letters_files = sorted(os.listdir(app.config['SPLIT_FOLDER']))
+    letters_urls = [f"/letters/{name}" for name in letters_files]
 
-# שליחה של קובץ אות בודדת
-@app.route('/letters/<filename>')
-def letter_file(filename):
-    return send_from_directory(app.config['SPLIT_FOLDER'], filename)
+    return jsonify({"success": True, "letters": letters_urls})
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
