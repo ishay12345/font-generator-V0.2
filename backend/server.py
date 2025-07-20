@@ -11,6 +11,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, '..', 'frontend', 'templates')
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['SPLIT_FOLDER'] = SPLIT_FOLDER
+app.config['BW_FOLDER'] = BW_FOLDER
 
 @app.route('/')
 def index():
