@@ -2,6 +2,8 @@ from flask import Flask, request, render_template
 import os
 from split_letters import split_letters_from_image
 from bw_converter import convert_to_bw
+from svg_converter import convert_to_svg
+
 
 UPLOAD_FOLDER = 'backend/uploads'
 SPLIT_FOLDER = 'backend/split_letters_output'
@@ -14,6 +16,7 @@ app = Flask(__name__, template_folder=TEMPLATE_DIR)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['SPLIT_FOLDER'] = SPLIT_FOLDER
 app.config['BW_FOLDER'] = BW_FOLDER
+app.config['']
 
 @app.route('/')
 def index():
