@@ -2,6 +2,7 @@
 <html lang="he">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>המרת כתב יד לפונט</title>
     <style>
         body {
@@ -13,8 +14,17 @@
         .container {
             margin-top: 50px;
         }
-        input[type="file"] {
+        .input-group {
             margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        input[type="file"], input[type="text"] {
+            margin: 10px 0;
+            padding: 8px;
+            width: 100%;
+            max-width: 300px;
         }
         .status {
             margin-top: 30px;
@@ -30,6 +40,21 @@
         button {
             padding: 10px 20px;
             font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        @media (max-width: 600px) {
+            .input-group {
+                flex-direction: column;
+            }
+            input[type="file"], input[type="text"] {
+                max-width: 100%;
+            }
         }
     </style>
 </head>
@@ -37,9 +62,15 @@
     <div class="container">
         <h1>העלאת כתב יד לפונט</h1>
         <form action="/upload" method="post" enctype="multipart/form-data">
-           <input type="file" name="file">
-           <button type="submit">שלח</button>
-       </form>
+            <div id="inputs">
+                <div class="input-group">
+                    <input type="file" name="files" accept=".png" multiple required aria-label="העלאת תמונות PNG של אותיות">
+                    <input type="text" name="letter_names" placeholder="שם האות (למשל: alef)" required aria-label="שם האות">
+                </div>
+            </div>
+            <button type="button" onclick="addInput()">הוסף אות נוספת</button>
+            <button type="submit" aria-label="צור פונט עברי">שלח</button>
+        </form>
 
         {% if status %}
             <div class="status">
@@ -53,7 +84,7 @@
             </div>
         {% endif %}
 
-        {% if font_ready %}
+        {% if font_ready is defined %}
             <div class="download">
                 <a href="{{ url_for('download_font') }}" download>
                     <button>⬇️ הורד את הפונט</button>
@@ -61,6 +92,16 @@
             </div>
         {% endif %}
     </div>
+    <script>
+        function addInput() {
+            const div = document.createElement("div");
+            div.className = "input-group";
+            div.innerHTML = `
+                <input type="file" name="files" accept=".png" required aria-label="העלאת תמונת PNG של אות">
+                <input type="text" name="letter_names" placeholder="שם האות (למשל: alef)" required aria-label="שם האות">
+            `;
+            document.getElementById("inputs").appendChild(div);
+        }
+    </script>
 </body>
 </html>
-
