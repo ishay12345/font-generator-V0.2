@@ -3,6 +3,7 @@ import os
 from split_letters import split_letters_from_image
 from bw_converter import convert_to_bw
 from svg_converter import convert_to_svg
+from font_generator import generate_ttf
 
 UPLOAD_FOLDER = 'backend/uploads'
 SPLIT_FOLDER = 'backend/split_letters_output'
@@ -44,6 +45,10 @@ def upload_file():
         # שלב 3 – המרה ל־SVG
         convert_to_svg(input_dir=BW_FOLDER, output_dir=SVG_FOLDER)
 
+        # שלב 4 – יצירת פונט TTF
+        TTF_OUTPUT_PATH = 'backend/fonts/my_font.ttf'
+        font_created = generate_ttf(svg_folder=SVG_FOLDER, output_ttf=TTF_OUTPUT_PATH)
+
         # בדיקה אם נוצרו קבצים בתיקיות
         bw_images = sorted(os.listdir(BW_FOLDER))
         svg_images = sorted(os.listdir(SVG_FOLDER))
@@ -56,12 +61,15 @@ def upload_file():
         print(f"✂️ חיתוך אותיות: {'הושלם' if cutting_done else 'נכשל'}")
         print(f"🖤 המרה לשחור-לבן: {'הושלם' if bw_done else 'נכשל'}")
         print(f"🟢 המרה ל-SVG: {'הושלם' if svg_done else 'נכשל'}")
+        print(f"🔠 יצירת פונט: {'הושלם' if font_created else 'נכשל'}")
 
         return render_template(
             'result.html',
             cutting_done=cutting_done,
             bw_done=bw_done,
-            svg_done=svg_done
+            svg_done=svg_done,
+            font_created=font_created,
+            font_path=TTF_OUTPUT_PATH if font_created else None
         )
     
     except Exception as e:
@@ -70,6 +78,7 @@ def upload_file():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
 
 
 
