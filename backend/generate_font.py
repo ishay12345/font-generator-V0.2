@@ -61,10 +61,15 @@ def generate_ttf(svg_folder, output_ttf):
             parse_path(d, pen)
             tt_glyph = pen.glyph()
 
-            # בדיקה אם הגליף ריק
+            # בדיקה אם הגליף תקין
             if not tt_glyph or not hasattr(tt_glyph, 'getBoundingBox'):
-                print(f"⚠️ גליף ריק או לא תקין: {filename}")
+                print(f"⚠️ גליף ריק או לא תקין: {filename}, משתמש ברוחב ברירת מחדל")
+                glyph.width = 600  # רוחב ברירת מחדל
+                glyph.left_side_bearing = 27
+                glyph.right_side_bearing = 27
                 doc.unlink()
+                glyph_count += 1
+                print(f"✅ {filename} → {name} ✓ (גליף ריק)")
                 continue
 
             glyph.contours = tt_glyph
@@ -78,8 +83,13 @@ def generate_ttf(svg_folder, output_ttf):
                 glyph.left_side_bearing = 27
                 glyph.right_side_bearing = 27
             else:
-                print(f"⚠️ לא ניתן לחשב גבולות עבור {filename}")
+                print(f"⚠️ לא ניתן לחשב גבולות עבור {filename}, משתמש ברוחב ברירת מחדל")
+                glyph.width = 600  # רוחב ברירת מחדל
+                glyph.left_side_bearing = 27
+                glyph.right_side_bearing = 27
                 doc.unlink()
+                glyph_count += 1
+                print(f"✅ {filename} → {name} ✓ (גליף ריק)")
                 continue
 
             glyph_count += 1
