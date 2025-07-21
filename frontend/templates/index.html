@@ -31,11 +31,10 @@
 
   <h1>העלאת כתב יד ליצירת פונט</h1>
 
-  <form id="uploadForm" enctype="multipart/form-data" method="post">
-    <input type="file" name="file" accept="image/*" required>
-    <br>
-    <button type="submit">העלה ובדוק</button>
-  </form>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <button type="submit">העלה ובדוק</button>
+    </form>
 
   <div class="result" id="result"></div>
 
