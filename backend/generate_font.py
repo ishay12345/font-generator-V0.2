@@ -59,15 +59,33 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.unicode = code
             pen = TTGlyphPen(None)
             parse_path(d, pen)
-            glyph.contours = pen.glyph()
+            tt_glyph = pen.glyph()
 
-            bounds = glyph.getBounds(font)
+            # בדיקה אם הגליף ריק
+            if not tt_glyph or not hasattr(tt_glyph, 'getBoundingBox'):
+                print(f"⚠️ גליף ריק או לא תקין: {filename}")
+                doc.unlink()
+                continue
+
+            glyph.contours = tt_glyph
+
+            # חישוב גבולות הגליף
+            bounds = tt_glyph.getBoundingBox()
             if bounds:
                 xmin, ymin, xmax, ymax = bounds
                 outline_width = int(xmax - xmin)
                 glyph.width = outline_width + 80
-            doc.unlink()
+                glyph.left_side_bearing = 27
+                glyph.right_side_bearing = 27
+            else:
+                print(f"⚠️ לא ניתן לחשב גבולות עבור {filename}")
+                doc.unlink()
+                continue
+
             glyph_count += 1
+            print(f"✅ {filename} → {name} ✓")
+            doc.unlink()
+
         except Exception as e:
             print(f"⚠️ שגיאה בקובץ {filename}: {e}")
             if 'doc' in locals():
@@ -86,4 +104,3 @@ def generate_ttf(svg_folder, output_ttf):
     except Exception as e:
         print(f"❌ שגיאה בשמירת הפונט: {e}")
         return False
-
