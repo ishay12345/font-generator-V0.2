@@ -27,7 +27,12 @@ def convert_to_svg(input_dir, output_dir):
         with open(svg_path, "r", encoding="utf-8") as f:
             svg_content = f.read()
 
-        svg_content = svg_content.replace("<path", f'<path id="{letter_name}"', 1)
+        # בדיקה אם קיים תג <path>
+        if "<path" not in svg_content:
+            print(f"⚠️ קובץ {svg_path} לא מכיל תג <path>, מוסיף תג ריק")
+            svg_content = svg_content.replace("</svg>", f'<path id="{letter_name}" d="" />\n</svg>')
+        else:
+            svg_content = svg_content.replace("<path", f'<path id="{letter_name}"', 1)
 
         with open(svg_path, "w", encoding="utf-8") as f:
             f.write(svg_content)
