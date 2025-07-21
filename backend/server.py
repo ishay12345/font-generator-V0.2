@@ -3,13 +3,13 @@ import os
 from split_letters import split_letters_from_image
 from bw_converter import convert_to_bw
 from svg_converter import convert_to_svg
-from font_generator import generate_ttf
+from generator_font import generate_ttf
 
 UPLOAD_FOLDER = 'backend/uploads'
 SPLIT_FOLDER = 'backend/split_letters_output'
 BW_FOLDER = 'backend/bw_letters'
 SVG_FOLDER = 'backend/svg_letters'
-FONT_OUTPUT_PATH = 'backend/fonts/my_font.ttf'
+FONT_OUTPUT_PATH = 'exports/my_font.ttf'
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, '..', 'frontend', 'templates')
