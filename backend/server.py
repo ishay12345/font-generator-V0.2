@@ -1,5 +1,6 @@
 from flask import Flask, request, render_template, send_file, url_for
 import os
+import traceback
 from split_letters import split_letters_from_image
 from bw_converter import convert_to_bw
 from svg_converter import convert_to_svg
@@ -69,6 +70,7 @@ def upload_file():
 
     except Exception as e:
         print("❌ שגיאה בתהליך:", str(e))
+        traceback.print_exc()
         return render_template('index.html', error=f"שגיאה: {str(e)}")
 
 @app.route('/download')
