@@ -2,47 +2,64 @@
 <html lang="he">
 <head>
   <meta charset="UTF-8">
-  <title>בדיקת שלבי הפונט</title>
-</head>
-<body style="font-family: sans-serif; direction: rtl; text-align: center; padding: 40px;">
-  <h1>🛠 בדיקת עיבוד התמונה</h1>
-
-  <h2>1️⃣ אותיות חתוכות:</h2>
-  <div id="cut-letters"></div>
-
-  <h2>2️⃣ שחור-לבן:</h2>
-  <div id="bw-letters"></div>
-
-  <h2>3️⃣ SVG:</h2>
-  <div id="svg-letters"></div>
-
-  <script>
-    async function loadImages(folder, elementId, type) {
-      try {
-        const res = await fetch(`/list-files/${folder}`);
-        const files = await res.json();
-
-        const container = document.getElementById(elementId);
-        if (files.length === 0) {
-          container.innerHTML = `<p style="color: red;">❌ לא נמצאו קבצים (${type})</p>`;
-        } else {
-          container.innerHTML = `<p style="color: green;">✅ נמצאו ${files.length} קבצים</p>`;
-          files.forEach(file => {
-            const img = document.createElement("img");
-            img.src = `/${folder}/${file}`;
-            img.style = "max-width: 60px; margin: 5px;";
-            container.appendChild(img);
-          });
-        }
-      } catch (e) {
-        document.getElementById(elementId).innerHTML = `<p style="color: red;">⚠️ שגיאה בטעינה</p>`;
-      }
+  <title>העלאת כתב יד</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      direction: rtl;
+      text-align: center;
+      background-color: #f2f2f2;
     }
+    .container {
+      margin: 50px auto;
+      padding: 30px;
+      background-color: white;
+      border-radius: 10px;
+      width: 400px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .status {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+    .bw-images {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    .bw-images img {
+      width: 50px;
+      margin: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>העלאת כתב יד</h2>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+      <input type="file" name="image" accept="image/*" required><br><br>
+      <input type="submit" value="שלח">
+    </form>
 
-    loadImages("split_letters_output", "cut-letters", "חיתוך");
-    loadImages("bw_letters", "bw-letters", "שחור-לבן");
-    loadImages("svg_letters", "svg-letters", "SVG");
-  </script>
+    {% if status_messages %}
+      <div class="status">
+        {% for message in status_messages %}
+          <p>{{ message }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if bw_images %}
+      <div class="bw-images">
+        {% for img in bw_images %}
+          <img src="{{ img }}" alt="bw letter">
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
 </body>
 </html>
 
