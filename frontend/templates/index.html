@@ -64,11 +64,10 @@
         <form action="/upload" method="post" enctype="multipart/form-data">
             <div id="inputs">
                 <div class="input-group">
-                    <input type="file" name="files" accept=".png" multiple required aria-label="העלאת תמונות PNG של אותיות">
-                    <input type="text" name="letter_names" placeholder="שם האות (למשל: alef)" required aria-label="שם האות">
+                    <input type="file" name="file" accept=".png" required aria-label="העלאת תמונת PNG עם אותיות">
+                    <input type="text" name="letter_names" placeholder="שמות האותיות (למשל: alef,bet,samekh)" required aria-label="שמות האותיות">
                 </div>
             </div>
-            <button type="button" onclick="addInput()">הוסף אות נוספת</button>
             <button type="submit" aria-label="צור פונט עברי">שלח</button>
         </form>
 
@@ -92,16 +91,5 @@
             </div>
         {% endif %}
     </div>
-    <script>
-        function addInput() {
-            const div = document.createElement("div");
-            div.className = "input-group";
-            div.innerHTML = `
-                <input type="file" name="files" accept=".png" required aria-label="העלאת תמונת PNG של אות">
-                <input type="text" name="letter_names" placeholder="שם האות (למשל: alef)" required aria-label="שם האות">
-            `;
-            document.getElementById("inputs").appendChild(div);
-        }
-    </script>
 </body>
 </html>
