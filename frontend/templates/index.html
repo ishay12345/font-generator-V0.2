@@ -7,59 +7,60 @@
     body {
       font-family: Arial, sans-serif;
       direction: rtl;
-      text-align: center;
-      background-color: #f2f2f2;
-    }
-    .container {
-      margin: 50px auto;
+      background-color: #f5f5f5;
       padding: 30px;
-      background-color: white;
-      border-radius: 10px;
-      width: 400px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      text-align: center;
     }
-    .status {
-      margin-top: 20px;
-      font-weight: bold;
+    h1 {
+      color: #333;
     }
-    .bw-images {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-top: 20px;
+    input[type="file"] {
+      margin: 20px 0;
     }
-    .bw-images img {
-      width: 50px;
-      margin: 5px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
+    .result {
+      margin-top: 30px;
+      font-size: 1.2em;
+      color: green;
+    }
+    .error {
+      color: red;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>העלאת כתב יד</h2>
-    <form action="/upload" method="post" enctype="multipart/form-data">
-      <input type="file" name="image" accept="image/*" required><br><br>
-      <input type="submit" value="שלח">
-    </form>
 
-    {% if status_messages %}
-      <div class="status">
-        {% for message in status_messages %}
-          <p>{{ message }}</p>
-        {% endfor %}
-      </div>
-    {% endif %}
+  <h1>העלאת כתב יד ליצירת פונט</h1>
 
-    {% if bw_images %}
-      <div class="bw-images">
-        {% for img in bw_images %}
-          <img src="{{ img }}" alt="bw letter">
-        {% endfor %}
-      </div>
-    {% endif %}
-  </div>
+  <form id="uploadForm" enctype="multipart/form-data" method="post">
+    <input type="file" name="file" accept="image/*" required>
+    <br>
+    <button type="submit">העלה ובדוק</button>
+  </form>
+
+  <div class="result" id="result"></div>
+
+  <script>
+    document.getElementById("uploadForm").addEventListener("submit", async function(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+
+      try {
+        const response = await fetch("/upload", {
+          method: "POST",
+          body: formData
+        });
+
+        const text = await response.text();
+        document.getElementById("result").textContent = text;
+        document.getElementById("result").classList.remove("error");
+      } catch (error) {
+        document.getElementById("result").textContent = "שגיאה בשליחת הקובץ לשרת.";
+        document.getElementById("result").classList.add("error");
+      }
+    });
+  </script>
+
 </body>
 </html>
 
