@@ -3,7 +3,7 @@ import os
 from split_letters import split_letters_from_image
 from bw_converter import convert_to_bw
 from svg_converter import convert_to_svg
-from generator_font import generate_ttf
+from generate_font import generate_ttf
 
 UPLOAD_FOLDER = 'backend/uploads'
 SPLIT_FOLDER = 'backend/split_letters_output'
