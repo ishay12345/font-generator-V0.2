@@ -26,9 +26,11 @@ def generate_ttf(svg_folder, output_ttf):
     font.info.ascender = 800
     font.info.descender = -200
 
+    used_letters = set()
     count = 0
+
     for filename in sorted(os.listdir(svg_folder)):
-        if not filename.endswith(".svg"):
+        if not filename.lower().endswith(".svg"):
             continue
 
         try:
@@ -38,7 +40,7 @@ def generate_ttf(svg_folder, output_ttf):
                 name = filename.replace(".svg", "")
 
             if name not in letter_map:
-                print(f"🔸 אות לא נמצאה במפה: {name}")
+                print(f"🔸 אות לא במפה: {name}")
                 continue
 
             unicode_val = letter_map[name]
@@ -48,34 +50,46 @@ def generate_ttf(svg_folder, output_ttf):
             paths = doc.getElementsByTagName('path')
             if not paths:
                 doc.unlink()
+                print(f"⚠️ אין path בקובץ: {filename}")
                 continue
 
-            d = paths[0].getAttribute('d')
-            doc.unlink()
-            if not d:
-                continue
-
-            # צור גליף חדש לפונט
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
             glyph.width = 700
-
-            # השתמש ב־TTGlyphPen לציור הגליף
             pen = glyph.getPen()
-            try:
-                parse_path(d, pen)
-            except Exception as e:
-                print(f"⚠️ שגיאה בפירוק path ב-{filename}: {e}")
+
+            successful = False
+            for path_element in paths:
+                d = path_element.getAttribute('d')
+                if not d.strip():
+                    continue
+                try:
+                    parse_path(d, pen)
+                    successful = True
+                except Exception as e:
+                    print(f"⚠️ שגיאה בנתיב ב-{filename}: {e}")
+
+            doc.unlink()
+
+            if not successful:
+                print(f"❌ לא ניתן לנתח path עבור {filename}")
                 continue
 
-            print(f"✅ {filename} הומר בהצלחה")
+            print(f"✅ {name} נוסף בהצלחה")
+            used_letters.add(name)
             count += 1
 
         except Exception as e:
             print(f"❌ שגיאה בעיבוד {filename}: {e}")
 
+    missing_letters = sorted(set(letter_map.keys()) - used_letters)
+    if missing_letters:
+        print("\n🔻 אותיות שלא נכנסו:")
+        for letter in missing_letters:
+            print(f" - {letter}")
+
     if count == 0:
-        print("❌ לא נוצרו גליפים")
+        print("❌ לא נוצרו גליפים כלל.")
         return False
 
     try:
@@ -87,3 +101,4 @@ def generate_ttf(svg_folder, output_ttf):
     except Exception as e:
         print(f"❌ שגיאה בשמירת הפונט: {e}")
         return False
+
