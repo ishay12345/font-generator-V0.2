@@ -21,7 +21,7 @@ def generate_ttf(svg_folder, output_ttf):
     font = Font()
     font.info.familyName = "Hebrew Handwriting"
     font.info.styleName = "Regular"
-    font.info.fullName = "Hebrew Handwriting"
+    font.info.fullName = "bHebrew Handwriting"
     font.info.unitsPerEm = 1000
     font.info.ascender = 800
     font.info.descender = -200
