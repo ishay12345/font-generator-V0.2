@@ -19,7 +19,7 @@ letter_map = {
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
     font = Font()
-    font.info.familyName = "Hebrew Handwriting"
+    font.info.familyName = "bHebrew Handwriting"
     font.info.styleName = "Regular"
     font.info.fullName = "bHebrew Handwriting"
     font.info.unitsPerEm = 1000
