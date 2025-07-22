@@ -5,45 +5,45 @@ from fontTools.svgLib.path import parse_path
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from xml.dom import minidom
 
+# מיפוי אותיות לעברית
 letter_map = {
     "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
     "he": 0x05D4, "vav": 0x05D5, "zayin": 0x05D6, "het": 0x05D7,
-    "tet": 0x05D8, "lamed": 0x05DC, "yod": 0x05D9, "kaf": 0x05DB,
-    "mem": 0x05DE, "nun": 0x05E0, "samekh": 0x05E1, "ayin": 0x05E2,
-    "pe": 0x05E4, "tsadi": 0x05E6, "qof": 0x05E7, "resh": 0x05E8,
-    "shin": 0x05E9, "tav": 0x05EA,
-    "final_kaf": 0x05DA, "final_mem": 0x05DD, "final_nun": 0x05DF,
-    "final_pe": 0x05E3, "final_tsadi": 0x05E5
+    "tet": 0x05D8, "yod": 0x05D9, "kaf": 0x05DB, "final_kaf": 0x05DA,
+    "lamed": 0x05DC, "mem": 0x05DE, "final_mem": 0x05DD,
+    "nun": 0x05E0, "final_nun": 0x05DF, "samekh": 0x05E1, "ayin": 0x05E2,
+    "pe": 0x05E4, "final_pe": 0x05E3, "tsadi": 0x05E6, "final_tsadi": 0x05E5,
+    "qof": 0x05E7, "resh": 0x05E8, "shin": 0x05E9, "tav": 0x05EA
 }
 
 def generate_ttf(svg_folder, output_ttf):
-    print("🚀 יצירת פונט עם FontTools")
+    print("🚀 התחלת יצירת פונט...")
     font = Font()
-    font.info.familyName = "Hebrew Font"
+    font.info.familyName = "Hebrew Handwriting"
     font.info.styleName = "Regular"
-    font.info.fullname = "Hebrew Font"
+    font.info.fullName = "Hebrew Handwriting"
     font.info.unitsPerEm = 1000
     font.info.ascender = 800
     font.info.descender = -200
 
-    glyph_count = 0
-
-    for filename in os.listdir(svg_folder):
+    count = 0
+    for filename in sorted(os.listdir(svg_folder)):
         if not filename.endswith(".svg"):
             continue
 
-        parts = filename.split("_", 1)
-        if len(parts) != 2:
-            continue
-
-        name = parts[1].replace(".svg", "")
-        if name not in letter_map:
-            continue
-
-        code = int(letter_map[name])
-        svg_path = os.path.join(svg_folder, filename)
-
         try:
+            if "_" in filename:
+                name = filename.split("_", 1)[1].replace(".svg", "")
+            else:
+                name = filename.replace(".svg", "")
+
+            if name not in letter_map:
+                print(f"🔸 אות לא נמצאה במפה: {name}")
+                continue
+
+            unicode_val = letter_map[name]
+            svg_path = os.path.join(svg_folder, filename)
+
             doc = minidom.parse(svg_path)
             paths = doc.getElementsByTagName('path')
             if not paths:
@@ -51,65 +51,38 @@ def generate_ttf(svg_folder, output_ttf):
                 continue
 
             d = paths[0].getAttribute('d')
-            if not d:
-                doc.unlink()
-                continue
-
-            glyph = font.newGlyph(name)
-            glyph.unicode = code
-            pen = TTGlyphPen(None)
-            parse_path(d, pen)
-            tt_glyph = pen.glyph()
-
-            # בדיקה אם הגליף תקין
-            if not tt_glyph or not hasattr(tt_glyph, 'getBoundingBox'):
-                print(f"⚠️ גליף ריק או לא תקין: {filename}, משתמש ברוחב ברירת מחדל")
-                glyph.width = 600  # רוחב ברירת מחדל
-                glyph.left_side_bearing = 27
-                glyph.right_side_bearing = 27
-                doc.unlink()
-                glyph_count += 1
-                print(f"✅ {filename} → {name} ✓ (גליף ריק)")
-                continue
-
-            glyph.contours = tt_glyph
-
-            # חישוב גבולות הגליף
-            bounds = tt_glyph.getBoundingBox()
-            if bounds:
-                xmin, ymin, xmax, ymax = bounds
-                outline_width = int(xmax - xmin)
-                glyph.width = outline_width + 80
-                glyph.left_side_bearing = 27
-                glyph.right_side_bearing = 27
-            else:
-                print(f"⚠️ לא ניתן לחשב גבולות עבור {filename}, משתמש ברוחב ברירת מחדל")
-                glyph.width = 600  # רוחב ברירת מחדל
-                glyph.left_side_bearing = 27
-                glyph.right_side_bearing = 27
-                doc.unlink()
-                glyph_count += 1
-                print(f"✅ {filename} → {name} ✓ (גליף ריק)")
-                continue
-
-            glyph_count += 1
-            print(f"✅ {filename} → {name} ✓")
             doc.unlink()
+            if not d:
+                continue
+
+            # צור גליף חדש לפונט
+            glyph = font.newGlyph(name)
+            glyph.unicode = unicode_val
+            glyph.width = 700
+
+            # השתמש ב־TTGlyphPen לציור הגליף
+            pen = glyph.getPen()
+            try:
+                parse_path(d, pen)
+            except Exception as e:
+                print(f"⚠️ שגיאה בפירוק path ב-{filename}: {e}")
+                continue
+
+            print(f"✅ {filename} הומר בהצלחה")
+            count += 1
 
         except Exception as e:
-            print(f"⚠️ שגיאה בקובץ {filename}: {e}")
-            if 'doc' in locals():
-                doc.unlink()
+            print(f"❌ שגיאה בעיבוד {filename}: {e}")
 
-    if glyph_count == 0:
-        print("❌ אין גליפים תקינים")
+    if count == 0:
+        print("❌ לא נוצרו גליפים")
         return False
 
     try:
         os.makedirs(os.path.dirname(output_ttf), exist_ok=True)
         ttf = compileTTF(font)
         ttf.save(output_ttf)
-        print(f"✅ הפונט נוצר: {output_ttf}")
+        print(f"\n🎉 הפונט נוצר בהצלחה בנתיב: {output_ttf}")
         return True
     except Exception as e:
         print(f"❌ שגיאה בשמירת הפונט: {e}")
