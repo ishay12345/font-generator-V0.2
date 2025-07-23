@@ -9,9 +9,9 @@ from xml.dom import minidom
 letter_map = {
    "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
     "he": 0x05D4, "vav": 0x05D5, "zayin": 0x05D6, "het": 0x05D7,
-    "tet": 0x05D8, "lamed": 0x05D9,   
-    "yod":  0x05DB,  
-    "kaf": 0x05DC,  
+    "tet": 0x05D8, "lamed": 0x05DB,   
+    "yod":  0x05DC,  
+    "kaf": 0x05D9,  
     "mem": 0x05DE, "nun": 0x05E0, "samekh": 0x05E1, "ayin": 0x05E2,
     "pe": 0x05E4, "tsadi": 0x05E6, "qof": 0x05E7, "resh": 0x05E8,
     "shin": 0x05E9, "tav": 0x05EA,
@@ -22,9 +22,9 @@ letter_map = {
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
     font = Font()
-    font.info.familyName = "hHebrew Handwriting"
+    font.info.familyName = "gHebrew Handwriting"
     font.info.styleName = "Regular"
-    font.info.fullName = "hHebrew Handwriting"
+    font.info.fullName = "gHebrew Handwriting"
     font.info.unitsPerEm = 1000
     font.info.ascender = 800
     font.info.descender = -200
