@@ -9,9 +9,9 @@ from xml.dom import minidom
 letter_map = {
    "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
     "he": 0x05D4, "vav": 0x05D5, "zayin": 0x05D6, "het": 0x05D7,
-    "tet": 0x05D8, "lamed": 0x05D9,  # לamed = י (Unicode של י)
-    "yod": 0x05DB,  # yod = כ (Unicode של כ)
-    "kaf": 0x05DC,  # kaf = ל (Unicode של ל)
+    "tet": 0x05D8, "lamed": 0x05DC,  # 
+    "yod":  0x05D9,  
+    "kaf": 0x05DB,  
     "mem": 0x05DE, "nun": 0x05E0, "samekh": 0x05E1, "ayin": 0x05E2,
     "pe": 0x05E4, "tsadi": 0x05E6, "qof": 0x05E7, "resh": 0x05E8,
     "shin": 0x05E9, "tav": 0x05EA,
