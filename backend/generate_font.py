@@ -58,7 +58,7 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-            glyph.width = 370  # רוחב אות משופר
+            glyph.width = 430  # רוחב אות משופר
             glyph.leftMargin = 12
             glyph.rightMargin = 12
 
@@ -70,7 +70,7 @@ def generate_ttf(svg_folder, output_ttf):
                 try:
                     transform = Identity
                     if name == "yod":
-                        transform = Identity.translate(0, 120)  # הזזת י'
+                        transform = Identity.translate(0, 200)  # הזזת י'
                     elif name == "qof":
                         transform = Identity.translate(0, -80)  # הזזת ק'
 
