@@ -2,21 +2,23 @@ import os
 from defcon import Font
 from ufo2ft import compileTTF
 from fontTools.svgLib.path import parse_path
+from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.misc.transform import Identity
 from xml.dom import minidom
 
 # מיפוי אותיות לעברית
 letter_map = {
-    "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
+   "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
     "he": 0x05D4, "vav": 0x05D5, "zayin": 0x05D6, "het": 0x05D7,
-    "tet": 0x05D8, "lamed": 0x05DB, "yod": 0x05DC, "kaf": 0x05D9,
+    "tet": 0x05D8, "lamed": 0x05DB,   
+    "yod":  0x05DC,  
+    "kaf": 0x05D9,  
     "mem": 0x05DE, "nun": 0x05E0, "samekh": 0x05E1, "ayin": 0x05E2,
     "pe": 0x05E4, "tsadi": 0x05E6, "qof": 0x05E7, "resh": 0x05E8,
     "shin": 0x05E9, "tav": 0x05EA,
     "final_kaf": 0x05DA, "final_mem": 0x05DD, "final_nun": 0x05DF,
-    "final_pe": 0x05E3, "final_tsadi": 0x05E5,
-    "space": 0x0020  # space (רווח)
+    "final_pe": 0x05E3, "final_tsadi": 0x05E5
 }
 
 def generate_ttf(svg_folder, output_ttf):
@@ -58,9 +60,11 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-            glyph.width = 340  # רוחב אות משופר
-            glyph.leftMargin = 12
-            glyph.rightMargin = 12
+            glyph.width = 350
+
+            # ✨ ריווח צמוד יותר בין אותיות
+            glyph.leftMargin = 6
+            glyph.rightMargin = 6
 
             successful = False
             for path_element in paths:
@@ -68,13 +72,12 @@ def generate_ttf(svg_folder, output_ttf):
                 if not d.strip():
                     continue
                 try:
-                    transform = Identity
                     if name == "yod":
-                        transform = Identity.translate(0, 120)  # הזזת י'
-                    elif name == "qof":
-                        transform = Identity.translate(0, -80)  # הזזת ק'
+                        transform = Identity.translate(0, 120)  # הזזה למעלה
+                        pen = TransformPen(glyph.getPen(), transform)
+                    else:
+                        pen = glyph.getPen()
 
-                    pen = TransformPen(glyph.getPen(), transform)
                     parse_path(d, pen)
                     successful = True
                 except Exception as e:
@@ -93,14 +96,6 @@ def generate_ttf(svg_folder, output_ttf):
         except Exception as e:
             print(f"❌ שגיאה בעיבוד {filename}: {e}")
 
-    # רווח בין מילים - גליף מותאם
-    if "space" not in used_letters:
-        space_glyph = font.newGlyph("space")
-        space_glyph.unicode = 0x0020
-        space_glyph.width = 200  # ריווח מוגדל בין מילים
-        used_letters.add("space")
-
-    # דיווח על אותיות חסרות
     missing_letters = sorted(set(letter_map.keys()) - used_letters)
     if missing_letters:
         print("\n🔻 אותיות שלא נכנסו:")
@@ -118,5 +113,8 @@ def generate_ttf(svg_folder, output_ttf):
         print(f"\n🎉 הפונט נוצר בהצלחה בנתיב: {output_ttf}")
         return True
     except Exception as e:
+        print(f"❌ שגיאה בשמירת הפונט: {e}")
+        return False
+
         print(f"❌ שגיאה בשמירת הפונט: {e}")
         return False
