@@ -21,9 +21,9 @@ letter_map = {
 def generate_ttf(svg_folder, output_ttf):
     print("\U0001F680 התחלת יצירת פונט...")
     font = Font()
-    font.info.familyName = "zHebrew Handwriting"
+    font.info.familyName = "yHebrew Handwriting"
     font.info.styleName = "Regular"
-    font.info.fullName = "zHebrew Handwriting"
+    font.info.fullName = "yHebrew Handwriting"
     font.info.unitsPerEm = 1000
     font.info.ascender = 800
     font.info.descender = -200
@@ -54,7 +54,7 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-            glyph.width = 450  # הגדר רוחב אות רחב יותר לריווח
+            glyph.width = 270  # הגדר רוחב אות רחב יותר לריווח
 
             # ✨ ריווח רחב יותר בין אותיות
             glyph.leftMargin = 6
