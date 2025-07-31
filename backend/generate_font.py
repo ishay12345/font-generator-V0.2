@@ -60,9 +60,9 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-            glyph.width = 350
-            glyph.leftMargin = 6
-            glyph.rightMargin = 6
+            glyph.width = 400
+            glyph.leftMargin = 13
+            glyph.rightMargin = 13
 
             successful = False
             for path_element in paths:
