@@ -15,15 +15,16 @@ letter_map = {
     "pe": 0x05E4, "tsadi": 0x05E6, "qof": 0x05E7, "resh": 0x05E8,
     "shin": 0x05E9, "tav": 0x05EA,
     "final_kaf": 0x05DA, "final_mem": 0x05DD, "final_nun": 0x05DF,
-    "final_pe": 0x05E3, "final_tsadi": 0x05E5
+    "final_pe": 0x05E3, "final_tsadi": 0x05E5,
+    "space": 0x0020  # space (רווח)
 }
 
 def generate_ttf(svg_folder, output_ttf):
-    print("\U0001F680 התחלת יצירת פונט...")
+    print("🚀 התחלת יצירת פונט...")
     font = Font()
-    font.info.familyName = "yHebrew Handwriting"
+    font.info.familyName = "gHebrew Handwriting"
     font.info.styleName = "Regular"
-    font.info.fullName = "yHebrew Handwriting"
+    font.info.fullName = "gHebrew Handwriting"
     font.info.unitsPerEm = 1000
     font.info.ascender = 800
     font.info.descender = -200
@@ -36,10 +37,13 @@ def generate_ttf(svg_folder, output_ttf):
             continue
 
         try:
-            name = filename.split("_", 1)[1].replace(".svg", "") if "_" in filename else filename.replace(".svg", "")
+            if "_" in filename:
+                name = filename.split("_", 1)[1].replace(".svg", "")
+            else:
+                name = filename.replace(".svg", "")
 
             if name not in letter_map:
-                print(f"\U0001F538 אות לא במפה: {name}")
+                print(f"🔸 אות לא במפה: {name}")
                 continue
 
             unicode_val = letter_map[name]
@@ -54,11 +58,9 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-            glyph.width = 300  # הגדר רוחב אות רחב יותר לריווח
-
-            # ✨ ריווח רחב יותר בין אותיות
-            glyph.leftMargin = 9
-            glyph.rightMargin = 9
+            glyph.width = 340  # רוחב אות משופר
+            glyph.leftMargin = 12
+            glyph.rightMargin = 12
 
             successful = False
             for path_element in paths:
@@ -66,10 +68,13 @@ def generate_ttf(svg_folder, output_ttf):
                 if not d.strip():
                     continue
                 try:
-                    pen = glyph.getPen()
+                    transform = Identity
                     if name == "yod":
-                        transform = Identity.translate(0, 120)
-                        pen = TransformPen(pen, transform)
+                        transform = Identity.translate(0, 120)  # הזזת י'
+                    elif name == "qof":
+                        transform = Identity.translate(0, -80)  # הזזת ק'
+
+                    pen = TransformPen(glyph.getPen(), transform)
                     parse_path(d, pen)
                     successful = True
                 except Exception as e:
@@ -88,6 +93,14 @@ def generate_ttf(svg_folder, output_ttf):
         except Exception as e:
             print(f"❌ שגיאה בעיבוד {filename}: {e}")
 
+    # רווח בין מילים - גליף מותאם
+    if "space" not in used_letters:
+        space_glyph = font.newGlyph("space")
+        space_glyph.unicode = 0x0020
+        space_glyph.width = 200  # ריווח מוגדל בין מילים
+        used_letters.add("space")
+
+    # דיווח על אותיות חסרות
     missing_letters = sorted(set(letter_map.keys()) - used_letters)
     if missing_letters:
         print("\n🔻 אותיות שלא נכנסו:")
