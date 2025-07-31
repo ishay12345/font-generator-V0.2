@@ -80,7 +80,7 @@ def generate_ttf(svg_folder, output_ttf):
                         transform = Identity.translate(0, -80)  # הורדת ק
                         pen = TransformPen(glyph.getPen(), transform)
                     elif name == "kaf":
-                        transform = Identity.translate(0, 140)  # הורדת ק
+                        transform = Identity.translate(0, 170)  # הורדת ק
                         pen = TransformPen(glyph.getPen(), transform)
                     else:
                         pen = glyph.getPen()
