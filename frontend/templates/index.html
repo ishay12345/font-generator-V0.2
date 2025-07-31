@@ -6,41 +6,90 @@
   <style>
     body {
       direction: rtl;
-      font-family: Arial, sans-serif;
-      background-color: #f5f5f5;
-      text-align: center;
-      padding: 40px;
-    }
-    h1 {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(145deg, #e9eff5, #ffffff);
       color: #333;
-      margin-bottom: 20px;
+      text-align: center;
+      padding: 60px 20px;
     }
+
+    h1 {
+      font-size: 2em;
+      margin-bottom: 30px;
+      color: #1f3f5b;
+    }
+
     form {
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
+      background: #fff;
+      padding: 30px;
+      border-radius: 10px;
       display: inline-block;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     }
+
     input[type="file"] {
-      margin: 10px 0;
+      display: none;
     }
+
+    label[for="file"] {
+      background-color: #3f51b5;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      display: inline-block;
+      margin-bottom: 15px;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+
+    label[for="file"]:hover {
+      background-color: #303f9f;
+    }
+
+    button[type="submit"] {
+      background: #4caf50;
+      color: white;
+      padding: 10px 25px;
+      font-size: 1em;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button[type="submit"]:hover {
+      background-color: #388e3c;
+    }
+
     #status {
-      margin-top: 20px;
+      margin-top: 25px;
       font-size: 1.1em;
+      min-height: 30px;
+      color: #444;
     }
+
     #download-btn {
       display: inline-block;
       margin-top: 30px;
       text-decoration: none;
-      background: #4CAF50;
+      background: #2196f3;
       color: white;
-      padding: 10px 20px;
+      padding: 10px 25px;
       border-radius: 5px;
       font-size: 1em;
+      transition: background-color 0.3s, opacity 0.3s;
     }
-    #download-btn:disabled {
-      background: #aaa;
+
+    #download-btn:hover {
+      background: #1976d2;
+    }
+
+    #download-btn:disabled,
+    #download-btn.disabled {
+      pointer-events: none;
+      opacity: 0.5;
+      background-color: #aaa;
     }
   </style>
 </head>
@@ -49,13 +98,14 @@
   <h1>העלאת כתב יד והורדת פונט</h1>
 
   <form id="upload-form" enctype="multipart/form-data">
+    <label for="file">📎 בחר קובץ תמונה</label>
     <input type="file" id="file" name="file" accept="image/*" required><br>
     <button type="submit">שלח תמונה</button>
   </form>
 
   <div id="status"></div>
 
-  <a id="download-btn" href="/download" download="my_font.ttf">
+  <a id="download-btn" href="/download" class="disabled" download="my_font.ttf">
     ⬇ הורד את הפונט
   </a>
 
@@ -64,15 +114,13 @@
     const status = document.getElementById('status');
     const downloadBtn = document.getElementById('download-btn');
 
-    // בראשית – כפתור ההורדה מושבת עד להעלאה
-    downloadBtn.style.pointerEvents = 'none';
-    downloadBtn.style.opacity = '0.5';
+    // בתחילה – כפתור ההורדה לא פעיל
+    downloadBtn.classList.add('disabled');
 
     form.addEventListener('submit', async e => {
       e.preventDefault();
       status.textContent = '⏳ מעלה ומייצר פונט...';
-      downloadBtn.style.pointerEvents = 'none';
-      downloadBtn.style.opacity = '0.5';
+      downloadBtn.classList.add('disabled');
 
       const formData = new FormData(form);
       try {
@@ -80,26 +128,26 @@
           method: 'POST',
           body: formData
         });
+
         if (!res.ok) {
           const text = await res.text();
           status.textContent = '❌ שגיאה בתהליך: ' + text;
         } else {
-          // אם השרת מחזיר JSON עם message או פשוט 200
           let msg = '';
           try {
             const data = await res.json();
-            msg = data.message || '✔️ התהליך הושלם';
+            msg = data.message || '✔️ הפונט מוכן להורדה!';
           } catch {
-            msg = '✔️ התהליך הושלם';
+            msg = '✔️ הפונט מוכן להורדה!';
           }
           status.textContent = msg;
         }
+
+        // מפעיל את כפתור ההורדה
+        downloadBtn.classList.remove('disabled');
       } catch (err) {
         status.textContent = '❌ שגיאה כללית: ' + err.message;
-      } finally {
-        // תמיד מאפשר הורדה (אפילו אם נכשל)
-        downloadBtn.style.pointerEvents = 'auto';
-        downloadBtn.style.opacity = '1';
+        downloadBtn.classList.remove('disabled');
       }
     });
   </script>
