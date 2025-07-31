@@ -2,18 +2,15 @@ import os
 from defcon import Font
 from ufo2ft import compileTTF
 from fontTools.svgLib.path import parse_path
-from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.misc.transform import Identity
 from xml.dom import minidom
 
 # מיפוי אותיות לעברית
 letter_map = {
-   "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
+    "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
     "he": 0x05D4, "vav": 0x05D5, "zayin": 0x05D6, "het": 0x05D7,
-    "tet": 0x05D8, "lamed": 0x05DB,   
-    "yod":  0x05DC,  
-    "kaf": 0x05D9,  
+    "tet": 0x05D8, "lamed": 0x05DB, "yod": 0x05DC, "kaf": 0x05D9,
     "mem": 0x05DE, "nun": 0x05E0, "samekh": 0x05E1, "ayin": 0x05E2,
     "pe": 0x05E4, "tsadi": 0x05E6, "qof": 0x05E7, "resh": 0x05E8,
     "shin": 0x05E9, "tav": 0x05EA,
@@ -22,11 +19,11 @@ letter_map = {
 }
 
 def generate_ttf(svg_folder, output_ttf):
-    print("🚀 התחלת יצירת פונט...")
+    print("\U0001F680 התחלת יצירת פונט...")
     font = Font()
-    font.info.familyName = "xHebrew Handwriting"
+    font.info.familyName = "gHebrew Handwriting"
     font.info.styleName = "Regular"
-    font.info.fullName = "xHebrew Handwriting"
+    font.info.fullName = "gHebrew Handwriting"
     font.info.unitsPerEm = 1000
     font.info.ascender = 800
     font.info.descender = -200
@@ -39,13 +36,10 @@ def generate_ttf(svg_folder, output_ttf):
             continue
 
         try:
-            if "_" in filename:
-                name = filename.split("_", 1)[1].replace(".svg", "")
-            else:
-                name = filename.replace(".svg", "")
+            name = filename.split("_", 1)[1].replace(".svg", "") if "_" in filename else filename.replace(".svg", "")
 
             if name not in letter_map:
-                print(f"🔸 אות לא במפה: {name}")
+                print(f"\U0001F538 אות לא במפה: {name}")
                 continue
 
             unicode_val = letter_map[name]
@@ -60,9 +54,9 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-            glyph.width = 450
+            glyph.width = 450  # הגדר רוחב אות רחב יותר לריווח
 
-            # ✨ ריווח צמוד יותר בין אותיות
+            # ✨ ריווח רחב יותר בין אותיות
             glyph.leftMargin = 6
             glyph.rightMargin = 6
 
@@ -72,12 +66,10 @@ def generate_ttf(svg_folder, output_ttf):
                 if not d.strip():
                     continue
                 try:
+                    pen = glyph.getPen()
                     if name == "yod":
-                        transform = Identity.translate(0, 120)  # הזזה למעלה
-                        pen = TransformPen(glyph.getPen(), transform)
-                    else:
-                        pen = glyph.getPen()
-
+                        transform = Identity.translate(0, 120)
+                        pen = TransformPen(pen, transform)
                     parse_path(d, pen)
                     successful = True
                 except Exception as e:
@@ -113,8 +105,5 @@ def generate_ttf(svg_folder, output_ttf):
         print(f"\n🎉 הפונט נוצר בהצלחה בנתיב: {output_ttf}")
         return True
     except Exception as e:
-        print(f"❌ שגיאה בשמירת הפונט: {e}")
-        return False
-
         print(f"❌ שגיאה בשמירת הפונט: {e}")
         return False
