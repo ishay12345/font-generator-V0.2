@@ -26,7 +26,7 @@ def generate_ttf(svg_folder, output_ttf):
     font.info.styleName = "Regular"
     font.info.fullName = "fHebrew Handwriting"
     font.info.unitsPerEm = 1000
-    font.info.ascender = 800
+    font.info.ascender = 900  # ⬅️ העלינו את ה־ascender מ־800 ל־900
     font.info.descender = -200
 
     used_letters = set()
@@ -58,7 +58,7 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-            glyph.width = 430  # רוחב אות משופר
+            glyph.width = 430
             glyph.leftMargin = 12
             glyph.rightMargin = 12
 
@@ -70,9 +70,9 @@ def generate_ttf(svg_folder, output_ttf):
                 try:
                     transform = Identity
                     if name == "yod":
-                        transform = Identity.translate(0, 200)  # הזזת י'
+                        transform = Identity.translate(0, 350)  # ⬅️ העלנו את י׳ יותר למעלה
                     elif name == "qof":
-                        transform = Identity.translate(0, -80)  # הזזת ק'
+                        transform = Identity.translate(0, -80)
 
                     pen = TransformPen(glyph.getPen(), transform)
                     parse_path(d, pen)
@@ -93,14 +93,12 @@ def generate_ttf(svg_folder, output_ttf):
         except Exception as e:
             print(f"❌ שגיאה בעיבוד {filename}: {e}")
 
-    # רווח בין מילים - גליף מותאם
     if "space" not in used_letters:
         space_glyph = font.newGlyph("space")
         space_glyph.unicode = 0x0020
-        space_glyph.width = 200  # ריווח מוגדל בין מילים
+        space_glyph.width = 200
         used_letters.add("space")
 
-    # דיווח על אותיות חסרות
     missing_letters = sorted(set(letter_map.keys()) - used_letters)
     if missing_letters:
         print("\n🔻 אותיות שלא נכנסו:")
@@ -120,4 +118,3 @@ def generate_ttf(svg_folder, output_ttf):
     except Exception as e:
         print(f"❌ שגיאה בשמירת הפונט: {e}")
         return False
-
