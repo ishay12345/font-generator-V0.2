@@ -26,7 +26,7 @@ def generate_ttf(svg_folder, output_ttf):
     font.info.styleName = "Regular"
     font.info.fullName = "fHebrew Handwriting"
     font.info.unitsPerEm = 1000
-    font.info.ascender = 900  # ⬅️ העלינו את ה־ascender מ־800 ל־900
+    font.info.ascender = 800  # ⬅️ העלינו את ה־ascender מ־800 ל־900
     font.info.descender = -200
 
     used_letters = set()
@@ -59,8 +59,8 @@ def generate_ttf(svg_folder, output_ttf):
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
             glyph.width = 430
-            glyph.leftMargin = 12
-            glyph.rightMargin = 12
+            glyph.leftMargin = 13
+            glyph.rightMargin = 13
 
             successful = False
             for path_element in paths:
@@ -70,7 +70,7 @@ def generate_ttf(svg_folder, output_ttf):
                 try:
                     transform = Identity
                     if name == "yod":
-                        transform = Identity.translate(0, 350)  # ⬅️ העלנו את י׳ יותר למעלה
+                        transform = Identity.translate(0, 220)  # ⬅️ העלנו את י׳ יותר למעלה
                     elif name == "qof":
                         transform = Identity.translate(0, -80)
 
