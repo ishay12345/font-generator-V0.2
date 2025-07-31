@@ -71,10 +71,10 @@ def generate_ttf(svg_folder, output_ttf):
                     continue
                 try:
                     if name == "yod":
-                        transform = Identity.translate(0, 120)  # העלאת י
+                        transform = Identity.translate(0, -80)  # העלאת י
                         pen = TransformPen(glyph.getPen(), transform)
                     elif name == "lamed":
-                        transform = Identity.translate(0, -80)  # הורדת ל
+                        transform = Identity.translate(0, 120)  # הורדת ל
                         pen = TransformPen(glyph.getPen(), transform)
                     else:
                         pen = glyph.getPen()
