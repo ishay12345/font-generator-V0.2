@@ -24,9 +24,9 @@ letter_map = {
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
     font = Font()
-    font.info.familyName = "wHebrew Handwriting"
+    font.info.familyName = "gHebrew Handwriting"
     font.info.styleName = "Regular"
-    font.info.fullName = "wHebrew Handwriting"
+    font.info.fullName = "gHebrew Handwriting"
     font.info.unitsPerEm = 1000
     font.info.ascender = 800
     font.info.descender = -200
@@ -60,9 +60,11 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-            glyph.width = 400
-            glyph.leftMargin = 13
-            glyph.rightMargin = 13
+            glyph.width = 350
+
+            # ✨ ריווח צמוד יותר בין אותיות
+            glyph.leftMargin = 6
+            glyph.rightMargin = 6
 
             successful = False
             for path_element in paths:
@@ -71,10 +73,7 @@ def generate_ttf(svg_folder, output_ttf):
                     continue
                 try:
                     if name == "yod":
-                        transform = Identity.translate(0, 120)  # העלאת י'
-                        pen = TransformPen(glyph.getPen(), transform)
-                    elif name == "qof":
-                        transform = Identity.translate(0, -80)  # הורדת ק'
+                        transform = Identity.translate(0, 120)  # הזזה למעלה
                         pen = TransformPen(glyph.getPen(), transform)
                     else:
                         pen = glyph.getPen()
@@ -114,5 +113,8 @@ def generate_ttf(svg_folder, output_ttf):
         print(f"\n🎉 הפונט נוצר בהצלחה בנתיב: {output_ttf}")
         return True
     except Exception as e:
+        print(f"❌ שגיאה בשמירת הפונט: {e}")
+        return False
+
         print(f"❌ שגיאה בשמירת הפונט: {e}")
         return False
