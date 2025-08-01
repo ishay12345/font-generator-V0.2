@@ -24,9 +24,9 @@ letter_map = {
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
     font = Font()
-    font.info.familyName = "gHebrew Handwriting"
+    font.info.familyName = "JHebrew Handwriting"
     font.info.styleName = "Regular"
-    font.info.fullName = "gHebrew Handwriting"
+    font.info.fullName = "JHebrew Handwriting"
     font.info.unitsPerEm = 1000
     font.info.ascender = 800
     font.info.descender = -200
