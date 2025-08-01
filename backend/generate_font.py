@@ -18,7 +18,8 @@ letter_map = {
     "pe": 0x05E4, "tsadi": 0x05E6, "qof": 0x05E7, "resh": 0x05E8,
     "shin": 0x05E9, "tav": 0x05EA,
     "final_kaf": 0x05DA, "final_mem": 0x05DD, "final_nun": 0x05DF,
-    "final_pe": 0x05E3, "final_tsadi": 0x05E5
+    "final_pe": 0x05E3, "final_tsadi": 0x05E5,
+    "space": 0x0020  # תו רווח
 }
 
 def generate_ttf(svg_folder, output_ttf):
@@ -60,9 +61,21 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-            glyph.width = 350
+
+            # הגדרת רוחב וריווח ברירת מחדל
+            glyph.width = 330
             glyph.leftMargin = 6
             glyph.rightMargin = 6
+
+            # התאמות מיוחדות
+            if name == "qof":
+                glyph.rightMargin = 3  # פחות רווח
+            if name == "space":
+                glyph.width = 300  # רווח מוגדל למילים
+                print("␣ רווח הוסף")
+                used_letters.add(name)
+                count += 1
+                continue  # אין SVG לרווח, אז לדלג להבא
 
             successful = False
             for path_element in paths:
