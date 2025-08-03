@@ -4,10 +4,10 @@ from ufo2ft import compileTTF
 from fontTools.svgLib.path import parse_path
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.pens.transformPen import TransformPen
-from fontTools.misc.transform import Identity
+from fontTools.pens.boundsPen import BoundsPen
+from fontTools.misc.transform import Identity, Scale
 from xml.dom import minidom
 
-# מיפוי אותיות לעברית
 letter_map = {
     "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
     "he": 0x05D4, "vav": 0x05D5, "zayin": 0x05D6, "het": 0x05D7,
@@ -19,8 +19,13 @@ letter_map = {
     "shin": 0x05E9, "tav": 0x05EA,
     "final_kaf": 0x05DA, "final_mem": 0x05DD, "final_nun": 0x05DF,
     "final_pe": 0x05E3, "final_tsadi": 0x05E5,
-    "space": 0x0020  # תו רווח
+    "space": 0x0020
 }
+
+def get_path_bbox(d):
+    pen = BoundsPen(None)
+    parse_path(d, pen)
+    return pen.bounds  # (xMin, yMin, xMax, yMax)
 
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
@@ -34,6 +39,7 @@ def generate_ttf(svg_folder, output_ttf):
 
     used_letters = set()
     count = 0
+    max_letter_height = 750  # הגבלת גובה
 
     for filename in sorted(os.listdir(svg_folder)):
         if not filename.lower().endswith(".svg"):
@@ -61,21 +67,18 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-
-            # הגדרת רוחב וריווח ברירת מחדל
             glyph.width = 330
             glyph.leftMargin = 6
             glyph.rightMargin = 6
 
-            # התאמות מיוחדות
             if name == "qof":
-                glyph.rightMargin = 3  # פחות רווח
+                glyph.rightMargin = 3
             if name == "space":
-                glyph.width = 300  # רווח מוגדל למילים
+                glyph.width = 300
                 print("␣ רווח הוסף")
                 used_letters.add(name)
                 count += 1
-                continue  # אין SVG לרווח, אז לדלג להבא
+                continue
 
             successful = False
             for path_element in paths:
@@ -83,21 +86,22 @@ def generate_ttf(svg_folder, output_ttf):
                 if not d.strip():
                     continue
                 try:
-                    if name == "yod":
-                        transform = Identity.translate(0, -80)  # העלאת י
-                        pen = TransformPen(glyph.getPen(), transform)
-                    elif name == "lamed":
-                        transform = Identity.translate(0, 120)  # הורדת ל
-                        pen = TransformPen(glyph.getPen(), transform)
-                    elif name == "qof":
-                        transform = Identity.translate(0, -120)  # הורדת ק
-                        pen = TransformPen(glyph.getPen(), transform)
-                    elif name == "kaf":
-                        transform = Identity.translate(0, 190)  # הורדת ק
-                        pen = TransformPen(glyph.getPen(), transform)
-                    else:
-                        pen = glyph.getPen()
+                    xMin, yMin, xMax, yMax = get_path_bbox(d)
+                    height = yMax - yMin if yMax and yMin else 1
+                    scale_factor = min(1.0, max_letter_height / height)
 
+                    transform = Identity.scale(scale_factor)
+
+                    if name == "yod":
+                        transform = transform.translate(0, -80)
+                    elif name == "lamed":
+                        transform = transform.translate(0, 120)
+                    elif name == "qof":
+                        transform = transform.translate(0, -120)
+                    elif name == "kaf":
+                        transform = transform.translate(0, 190)
+
+                    pen = TransformPen(glyph.getPen(), transform)
                     parse_path(d, pen)
                     successful = True
                 except Exception as e:
