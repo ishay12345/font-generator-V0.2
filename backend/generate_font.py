@@ -32,9 +32,9 @@ def get_path_bbox(d):
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
     font = Font()
-    font.info.familyName = "LHebrew Handwriting"
+    font.info.familyName = "wrHebrew Handwriting"
     font.info.styleName = "Regular"
-    font.info.fullName = "LHebrew Handwriting"
+    font.info.fullName = "wrHebrew Handwriting"
     font.info.unitsPerEm = 1000
     font.info.ascender = 800
     font.info.descender = -200
