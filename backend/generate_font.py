@@ -4,7 +4,7 @@ from ufo2ft import compileTTF
 from fontTools.svgLib.path import parse_path
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.pens.transformPen import TransformPen
-from fontTools.misc.transform import Identity, Scale, Offset
+from fontTools.misc.transform import Identity
 from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.recordingPen import RecordingPen
 from xml.dom import minidom
@@ -13,17 +13,15 @@ from xml.dom import minidom
 letter_map = {
     "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
     "he": 0x05D4, "vav": 0x05D5, "zayin": 0x05D6, "het": 0x05D7,
-    "tet": 0x05D8, "lamed": 0x05DB,
-    "yod": 0x05DC,
-    "kaf": 0x05D9,
+    "tet": 0x05D8, "lamed": 0x05DB, "yod": 0x05DC, "kaf": 0x05D9,
     "mem": 0x05DE, "nun": 0x05E0, "samekh": 0x05E1, "ayin": 0x05E2,
     "pe": 0x05E4, "tsadi": 0x05E6, "qof": 0x05E7, "resh": 0x05E8,
-    "shin": 0x05E9, "tav": 0x05EA,
-    "final_kaf": 0x05DA, "final_mem": 0x05DD, "final_nun": 0x05DF,
-    "final_pe": 0x05E3, "final_tsadi": 0x05E5,
-    "space": 0x0020
+    "shin": 0x05E9, "tav": 0x05EA, "final_kaf": 0x05DA,
+    "final_mem": 0x05DD, "final_nun": 0x05DF, "final_pe": 0x05E3,
+    "final_tsadi": 0x05E5, "space": 0x0020
 }
 
+# פונקציה למציאת גבולות path
 def get_path_bbox(d):
     pen = RecordingPen()
     parse_path(d, pen)
@@ -32,7 +30,7 @@ def get_path_bbox(d):
     return bounds_pen.bounds  # (xMin, yMin, xMax, yMax)
 
 def generate_ttf(svg_folder, output_ttf):
-    print("\n🚀 התחלת יצירת פונט...")
+    print("🚀 התחלת יצירת פונט...")
     font = Font()
     font.info.familyName = "LHebrew Handwriting"
     font.info.styleName = "Regular"
@@ -49,18 +47,13 @@ def generate_ttf(svg_folder, output_ttf):
             continue
 
         try:
-            if "_" in filename:
-                name = filename.split("_", 1)[1].replace(".svg", "")
-            else:
-                name = filename.replace(".svg", "")
-
+            name = filename.split("_", 1)[1].replace(".svg", "") if "_" in filename else filename.replace(".svg", "")
             if name not in letter_map:
                 print(f"🔸 אות לא במפה: {name}")
                 continue
 
             unicode_val = letter_map[name]
             svg_path = os.path.join(svg_folder, filename)
-
             doc = minidom.parse(svg_path)
             paths = doc.getElementsByTagName('path')
             if not paths:
@@ -70,55 +63,55 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-            glyph.width = 330
-            glyph.leftMargin = 6
-            glyph.rightMargin = 6
 
-            if name == "qof":
-                glyph.rightMargin = 3
+            # אם זה רווח – קובעים רוחב בלבד
             if name == "space":
-                glyph.width = 350
+                glyph.width = 300
                 print("␣ רווח הוסף")
                 used_letters.add(name)
                 count += 1
                 continue
 
             successful = False
+            max_width = 0
+            max_height = 0
+            glyph.leftMargin = 10
+            glyph.rightMargin = 10
+
             for path_element in paths:
                 d = path_element.getAttribute('d')
                 if not d.strip():
                     continue
 
-                try:
-                    xMin, yMin, xMax, yMax = get_path_bbox(d)
+                # חישוב גבולות מקוריים
+                bounds = get_path_bbox(d)
+                if bounds:
+                    xMin, yMin, xMax, yMax = bounds
+                    width = xMax - xMin
                     height = yMax - yMin
-                    target_height = 700  # גובה אידאלי
+                    max_width = max(max_width, width)
+                    max_height = max(max_height, height)
 
-                    scale_factor = 1.0
-                    if height > target_height:
-                        scale_factor = target_height / height
+                # סקלת גובה אם האות גבוהה מדי
+                transform = Identity
+                if max_height > 700:
+                    scale = 700 / max_height
+                    transform = transform.scale(scale)
 
-                    transform = Identity
+                # תזוזות מיוחדות
+                if name == "yod":
+                    transform = transform.translate(0, -80)
+                elif name == "lamed":
+                    transform = transform.translate(0, 120)
+                elif name == "qof":
+                    transform = transform.translate(0, -120)
+                elif name == "kaf":
+                    transform = transform.translate(0, 190)
 
-                    if scale_factor < 1.0:
-                        transform = transform.scale(scale_factor)
-
-                    # הזזת אותות מסוימות
-                    if name == "yod":
-                        transform = transform.translate(0, -80)
-                    elif name == "lamed":
-                        transform = transform.translate(0, 120)
-                    elif name == "qof":
-                        transform = transform.translate(0, -120)
-                    elif name == "kaf":
-                        transform = transform.translate(0, 190)
-
-                    pen = TransformPen(glyph.getPen(), transform)
-                    parse_path(d, pen)
-                    successful = True
-
-                except Exception as e:
-                    print(f"⚠️ שגיאה בנתיב ב-{filename}: {e}")
+                # יצירת העט עם התמרות
+                pen = TransformPen(glyph.getPen(), transform)
+                parse_path(d, pen)
+                successful = True
 
             doc.unlink()
 
@@ -126,13 +119,17 @@ def generate_ttf(svg_folder, output_ttf):
                 print(f"❌ לא ניתן לנתח path עבור {filename}")
                 continue
 
-            print(f"✅ {name} נוסף בהצלחה")
+            # רוחב הגליף עם מרווח בטחון
+            glyph.width = int(max_width + 40) if max_width else 330
+
+            print(f"✅ {name} נוסף בהצלחה, רוחב: {glyph.width}")
             used_letters.add(name)
             count += 1
 
         except Exception as e:
             print(f"❌ שגיאה בעיבוד {filename}: {e}")
 
+    # דיווח על אותיות חסרות
     missing_letters = sorted(set(letter_map.keys()) - used_letters)
     if missing_letters:
         print("\n🔻 אותיות שלא נכנסו:")
