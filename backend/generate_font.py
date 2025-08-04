@@ -67,7 +67,7 @@ def generate_ttf(svg_folder, output_ttf):
                 print(f"⚠️ אין נתיבים בקובץ: {filename}")
                 continue
 
-            # בדיקת כפילות לפי hash של ה־d
+            # בדיקת כפילויות
             d_hash = hash_d_list(d_list)
             if d_hash in seen_hashes:
                 print(f"🚫 אות {name} זהה לתוכן קודם – מדולגת")
@@ -93,12 +93,17 @@ def generate_ttf(svg_folder, output_ttf):
             width = xMax - xMin
             height = yMax - yMin
 
+            # התחלה עם טרנספורמציה בסיסית
             transform = Identity
-            if height > 700:
-                scale = 700 / height
-                transform = transform.scale(scale)
 
-            # תזוזות מיוחדות
+            # 🟡 הקטנת SVG לגובה ורוחב אחידים (סף גובה ורוחב - 800)
+            max_dim = max(width, height)
+            if max_dim > 800:
+                scale = 800 / max_dim
+                transform = transform.scale(scale)
+                print(f"📏 אות {name} הוקטנה בקנה מידה {round(scale, 2)}")
+
+            # תיקוני תזוזה ידניים
             if name == "yod":
                 transform = transform.translate(0, -80)
             elif name == "lamed":
@@ -108,12 +113,14 @@ def generate_ttf(svg_folder, output_ttf):
             elif name == "kaf":
                 transform = transform.translate(0, 190)
 
+            # הוספת האות לגליף עם שינויי מיקום וגודל
             pen = TransformPen(glyph.getPen(), transform)
             combined_pen.replay(pen)
 
-            glyph.leftMargin = 40
-            glyph.rightMargin = 40
-            glyph.width = int(width + glyph.leftMargin + glyph.rightMargin + 80)
+            # ריווח ואורך הגליף
+            glyph.leftMargin = 50
+            glyph.rightMargin = 50
+            glyph.width = int(width * (scale if max_dim > 800 else 1) + glyph.leftMargin + glyph.rightMargin + 80)
 
             print(f"✅ {name} נוסף, רוחב כולל: {glyph.width}")
             used_letters.add(name)
@@ -122,6 +129,7 @@ def generate_ttf(svg_folder, output_ttf):
         except Exception as e:
             print(f"❌ שגיאה בעיבוד {filename}: {e}")
 
+    # בדיקת אותיות חסרות
     missing_letters = sorted(set(letter_map.keys()) - used_letters)
     if missing_letters:
         print("\n🔻 אותיות שלא נכנסו:")
