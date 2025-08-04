@@ -1,12 +1,14 @@
 # backend/split_letters.py
-
 import cv2
 import os
 import numpy as np
+import hashlib
+
+def hash_image(image):
+    return hashlib.sha256(image.tobytes()).hexdigest()
 
 def split_letters_from_image(image_path, output_dir):
     os.makedirs(output_dir, exist_ok=True)
-
     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
     _, thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
@@ -88,13 +90,20 @@ def split_letters_from_image(image_path, output_dir):
     ]
 
     padding = 10
-    for i, (x,y,w,h) in enumerate(ordered[:27]):
+    seen_hashes = set()
+    saved_count = 0
+    for i, (x,y,w,h) in enumerate(ordered):
+        if saved_count >= len(hebrew_letters):
+            break
         x1,y1 = max(x-padding,0), max(y-padding,0)
         x2,y2 = min(x+w+padding, img.shape[1]), min(y+h+padding, img.shape[0])
         crop = img[y1:y2, x1:x2]
-        name = hebrew_letters[i]
-        cv2.imwrite(os.path.join(output_dir, f"{i:02d}_{name}.png"), crop)
+        crop_hash = hash_image(crop)
+        if crop_hash in seen_hashes:
+            continue
+        seen_hashes.add(crop_hash)
+        name = hebrew_letters[saved_count]
+        cv2.imwrite(os.path.join(output_dir, f"{saved_count:02d}_{name}.png"), crop)
+        saved_count += 1
 
-    print(f"✅ נחתכו {min(27, len(ordered))} אותיות ונשמרו בתיקייה:\n{output_dir}")
-
-
+    print(f"✅ נחתכו {saved_count} אותיות ונשמרו בתיקייה:\n{output_dir}")
