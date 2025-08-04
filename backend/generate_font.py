@@ -21,7 +21,6 @@ letter_map = {
     "final_tsadi": 0x05E5, "space": 0x0020
 }
 
-# פונקציה למציאת גבולות path
 def get_path_bbox(d):
     pen = RecordingPen()
     parse_path(d, pen)
@@ -32,9 +31,9 @@ def get_path_bbox(d):
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
     font = Font()
-    font.info.familyName = "wrHebrew Handwriting"
+    font.info.familyName = "LHebrew Handwriting"
     font.info.styleName = "Regular"
-    font.info.fullName = "wrHebrew Handwriting"
+    font.info.fullName = "LHebrew Handwriting"
     font.info.unitsPerEm = 1000
     font.info.ascender = 800
     font.info.descender = -200
@@ -64,7 +63,6 @@ def generate_ttf(svg_folder, output_ttf):
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
 
-            # אם זה רווח – קובעים רוחב בלבד
             if name == "space":
                 glyph.width = 300
                 print("␣ רווח הוסף")
@@ -75,15 +73,12 @@ def generate_ttf(svg_folder, output_ttf):
             successful = False
             max_width = 0
             max_height = 0
-            glyph.leftMargin = 10
-            glyph.rightMargin = 10
 
             for path_element in paths:
                 d = path_element.getAttribute('d')
                 if not d.strip():
                     continue
 
-                # חישוב גבולות מקוריים
                 bounds = get_path_bbox(d)
                 if bounds:
                     xMin, yMin, xMax, yMax = bounds
@@ -92,13 +87,11 @@ def generate_ttf(svg_folder, output_ttf):
                     max_width = max(max_width, width)
                     max_height = max(max_height, height)
 
-                # סקלת גובה אם האות גבוהה מדי
                 transform = Identity
                 if max_height > 700:
                     scale = 700 / max_height
                     transform = transform.scale(scale)
 
-                # תזוזות מיוחדות
                 if name == "yod":
                     transform = transform.translate(0, -80)
                 elif name == "lamed":
@@ -108,7 +101,6 @@ def generate_ttf(svg_folder, output_ttf):
                 elif name == "kaf":
                     transform = transform.translate(0, 190)
 
-                # יצירת העט עם התמרות
                 pen = TransformPen(glyph.getPen(), transform)
                 parse_path(d, pen)
                 successful = True
@@ -119,8 +111,12 @@ def generate_ttf(svg_folder, output_ttf):
                 print(f"❌ לא ניתן לנתח path עבור {filename}")
                 continue
 
-            # רוחב הגליף עם מרווח בטחון
-            glyph.width = int(max_width + 40) if max_width else 330
+            # מרווחים אחידים וברורים בין האותיות
+            glyph.leftMargin = 20
+            glyph.rightMargin = 20
+
+            # קביעת רוחב כולל עם ריווח מוגדל
+            glyph.width = int(max_width + glyph.leftMargin + glyph.rightMargin + 40)
 
             print(f"✅ {name} נוסף בהצלחה, רוחב: {glyph.width}")
             used_letters.add(name)
@@ -129,7 +125,6 @@ def generate_ttf(svg_folder, output_ttf):
         except Exception as e:
             print(f"❌ שגיאה בעיבוד {filename}: {e}")
 
-    # דיווח על אותיות חסרות
     missing_letters = sorted(set(letter_map.keys()) - used_letters)
     if missing_letters:
         print("\n🔻 אותיות שלא נכנסו:")
