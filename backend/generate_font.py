@@ -1,4 +1,5 @@
 import os
+import hashlib
 from defcon import Font
 from ufo2ft import compileTTF
 from fontTools.svgLib.path import parse_path
@@ -27,6 +28,10 @@ def get_combined_bbox(paths):
     pen.replay(bounds_pen)
     return bounds_pen.bounds, pen
 
+def hash_d_list(d_list):
+    all_d = "".join(sorted(d_list))
+    return hashlib.sha256(all_d.encode('utf-8')).hexdigest()
+
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
     font = Font()
@@ -38,6 +43,7 @@ def generate_ttf(svg_folder, output_ttf):
     font.info.descender = -200
 
     used_letters = set()
+    seen_hashes = set()
     count = 0
 
     for filename in sorted(os.listdir(svg_folder)):
@@ -61,6 +67,13 @@ def generate_ttf(svg_folder, output_ttf):
                 print(f"⚠️ אין נתיבים בקובץ: {filename}")
                 continue
 
+            # בדיקת כפילות לפי hash של ה־d
+            d_hash = hash_d_list(d_list)
+            if d_hash in seen_hashes:
+                print(f"🚫 אות {name} זהה לתוכן קודם – מדולגת")
+                continue
+            seen_hashes.add(d_hash)
+
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
 
@@ -71,7 +84,6 @@ def generate_ttf(svg_folder, output_ttf):
                 count += 1
                 continue
 
-            # חישוב גבולות משולב
             bounds, combined_pen = get_combined_bbox(d_list)
             if not bounds:
                 print(f"❌ לא נמצאו גבולות ל-{filename}")
@@ -81,7 +93,6 @@ def generate_ttf(svg_folder, output_ttf):
             width = xMax - xMin
             height = yMax - yMin
 
-            # קנה מידה לגובה אחיד
             transform = Identity
             if height > 700:
                 scale = 700 / height
@@ -97,11 +108,9 @@ def generate_ttf(svg_folder, output_ttf):
             elif name == "kaf":
                 transform = transform.translate(0, 190)
 
-            # טרנספורמציה לכל הגליף יחד
             pen = TransformPen(glyph.getPen(), transform)
             combined_pen.replay(pen)
 
-            # ריווחים ברורים
             glyph.leftMargin = 40
             glyph.rightMargin = 40
             glyph.width = int(width + glyph.leftMargin + glyph.rightMargin + 80)
@@ -113,7 +122,6 @@ def generate_ttf(svg_folder, output_ttf):
         except Exception as e:
             print(f"❌ שגיאה בעיבוד {filename}: {e}")
 
-    # חיפוש אותיות חסרות
     missing_letters = sorted(set(letter_map.keys()) - used_letters)
     if missing_letters:
         print("\n🔻 אותיות שלא נכנסו:")
