@@ -69,7 +69,7 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.rightMargin = 10
 
             if name == "space":
-                glyph.width = 300
+                glyph.width = 350
                 print("␣ רווח הוסף")
                 used_letters.add(name)
                 count += 1
