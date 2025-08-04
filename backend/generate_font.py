@@ -1,5 +1,6 @@
 import os
 import hashlib
+import numpy as np
 from defcon import Font
 from ufo2ft import compileTTF
 from fontTools.svgLib.path import parse_path
@@ -8,6 +9,7 @@ from fontTools.misc.transform import Identity
 from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.recordingPen import RecordingPen
 from xml.dom import minidom
+import cv2
 
 letter_map = {
     "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
@@ -32,6 +34,51 @@ def hash_d_list(d_list):
     all_d = "".join(sorted(d_list))
     return hashlib.sha256(all_d.encode('utf-8')).hexdigest()
 
+def render_path_to_image(d_list, size=128):
+    img = np.ones((size, size), dtype=np.uint8) * 255
+    pen = RecordingPen()
+    for d in d_list:
+        parse_path(d, pen)
+    bounds_pen = BoundsPen(None)
+    pen.replay(bounds_pen)
+    bounds = bounds_pen.bounds
+    if not bounds:
+        return None
+    xMin, yMin, xMax, yMax = bounds
+    width = xMax - xMin
+    height = yMax - yMin
+    scale = 0.8 * size / max(width, height)
+    tx = -xMin * scale + (size - width * scale) / 2
+    ty = -yMin * scale + (size - height * scale) / 2
+
+    from fontTools.pens.svgPathPen import SVGPathPen
+    from fontTools.pens.basePen import decomposeQuadraticSegment
+    from fontTools.pens.recordingPen import RecordingPen
+    from fontTools.pens.ttGlyphPen import TTGlyphPen
+    from fontTools.pens.boundsPen import ControlBoundsPen
+
+    path = np.zeros((size, size), dtype=np.uint8)
+    canvas = np.ones((size, size), dtype=np.uint8) * 255
+    for d in d_list:
+        pts = cv2.approxPolyDP(np.array(cv2.convexHull(np.array([[float(x), float(y)] for x, y in parse_path(d).toAbsolute().asPoints()])), dtype=np.int32), 3, True)
+        if pts.shape[0] >= 3:
+            cv2.fillPoly(canvas, [pts], 0)
+
+    return canvas
+
+def compute_hu_moments(d_list):
+    img = render_path_to_image(d_list)
+    if img is None:
+        return None
+    moments = cv2.moments(img)
+    hu = cv2.HuMoments(moments).flatten()
+    return hu
+
+def is_similar_hu(hu1, hu2, threshold=0.005):
+    if hu1 is None or hu2 is None:
+        return False
+    return np.linalg.norm(np.log1p(hu1) - np.log1p(hu2)) < threshold
+
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
     font = Font()
@@ -44,6 +91,7 @@ def generate_ttf(svg_folder, output_ttf):
 
     used_letters = set()
     seen_hashes = set()
+    seen_hu = []
     count = 0
 
     for filename in sorted(os.listdir(svg_folder)):
@@ -67,12 +115,18 @@ def generate_ttf(svg_folder, output_ttf):
                 print(f"⚠️ אין נתיבים בקובץ: {filename}")
                 continue
 
-            # בדיקת כפילויות
             d_hash = hash_d_list(d_list)
             if d_hash in seen_hashes:
-                print(f"🚫 אות {name} זהה לתוכן קודם – מדולגת")
+                print(f"🚫 אות {name} דלגה כי זהה ב־hash לאחרת")
                 continue
+
+            hu = compute_hu_moments(d_list)
+            if any(is_similar_hu(hu, prev_hu) for prev_hu in seen_hu):
+                print(f"🚫 אות {name} דלגה כי דומה חזותית לאחרת")
+                continue
+
             seen_hashes.add(d_hash)
+            seen_hu.append(hu)
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
@@ -93,17 +147,13 @@ def generate_ttf(svg_folder, output_ttf):
             width = xMax - xMin
             height = yMax - yMin
 
-            # התחלה עם טרנספורמציה בסיסית
             transform = Identity
-
-            # 🟡 הקטנת SVG לגובה ורוחב אחידים (סף גובה ורוחב - 800)
             max_dim = max(width, height)
             if max_dim > 800:
                 scale = 800 / max_dim
                 transform = transform.scale(scale)
-                print(f"📏 אות {name} הוקטנה בקנה מידה {round(scale, 2)}")
+                print(f"📏 {name} הוקטנה בקנה מידה {round(scale,2)}")
 
-            # תיקוני תזוזה ידניים
             if name == "yod":
                 transform = transform.translate(0, -80)
             elif name == "lamed":
@@ -113,11 +163,9 @@ def generate_ttf(svg_folder, output_ttf):
             elif name == "kaf":
                 transform = transform.translate(0, 190)
 
-            # הוספת האות לגליף עם שינויי מיקום וגודל
             pen = TransformPen(glyph.getPen(), transform)
             combined_pen.replay(pen)
 
-            # ריווח ואורך הגליף
             glyph.leftMargin = 50
             glyph.rightMargin = 50
             glyph.width = int(width * (scale if max_dim > 800 else 1) + glyph.leftMargin + glyph.rightMargin + 80)
@@ -129,7 +177,6 @@ def generate_ttf(svg_folder, output_ttf):
         except Exception as e:
             print(f"❌ שגיאה בעיבוד {filename}: {e}")
 
-    # בדיקת אותיות חסרות
     missing_letters = sorted(set(letter_map.keys()) - used_letters)
     if missing_letters:
         print("\n🔻 אותיות שלא נכנסו:")
