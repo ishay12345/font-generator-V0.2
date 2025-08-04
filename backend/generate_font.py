@@ -2,14 +2,12 @@ import os
 from defcon import Font
 from ufo2ft import compileTTF
 from fontTools.svgLib.path import parse_path
-from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.misc.transform import Identity
 from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.recordingPen import RecordingPen
 from xml.dom import minidom
 
-# מיפוי אותיות לעברית
 letter_map = {
     "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
     "he": 0x05D4, "vav": 0x05D5, "zayin": 0x05D6, "het": 0x05D7,
@@ -21,12 +19,13 @@ letter_map = {
     "final_tsadi": 0x05E5, "space": 0x0020
 }
 
-def get_path_bbox(d):
+def get_combined_bbox(paths):
     pen = RecordingPen()
-    parse_path(d, pen)
+    for d in paths:
+        parse_path(d, pen)
     bounds_pen = BoundsPen(None)
     pen.replay(bounds_pen)
-    return bounds_pen.bounds  # (xMin, yMin, xMax, yMax)
+    return bounds_pen.bounds, pen
 
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
@@ -55,9 +54,11 @@ def generate_ttf(svg_folder, output_ttf):
             svg_path = os.path.join(svg_folder, filename)
             doc = minidom.parse(svg_path)
             paths = doc.getElementsByTagName('path')
-            if not paths:
-                doc.unlink()
-                print(f"⚠️ אין path בקובץ: {filename}")
+            d_list = [el.getAttribute('d') for el in paths if el.getAttribute('d').strip()]
+            doc.unlink()
+
+            if not d_list:
+                print(f"⚠️ אין נתיבים בקובץ: {filename}")
                 continue
 
             glyph = font.newGlyph(name)
@@ -70,61 +71,49 @@ def generate_ttf(svg_folder, output_ttf):
                 count += 1
                 continue
 
-            successful = False
-            max_width = 0
-            max_height = 0
-
-            for path_element in paths:
-                d = path_element.getAttribute('d')
-                if not d.strip():
-                    continue
-
-                bounds = get_path_bbox(d)
-                if bounds:
-                    xMin, yMin, xMax, yMax = bounds
-                    width = xMax - xMin
-                    height = yMax - yMin
-                    max_width = max(max_width, width)
-                    max_height = max(max_height, height)
-
-                transform = Identity
-                if max_height > 700:
-                    scale = 700 / max_height
-                    transform = transform.scale(scale)
-
-                if name == "yod":
-                    transform = transform.translate(0, -80)
-                elif name == "lamed":
-                    transform = transform.translate(0, 120)
-                elif name == "qof":
-                    transform = transform.translate(0, -120)
-                elif name == "kaf":
-                    transform = transform.translate(0, 190)
-
-                pen = TransformPen(glyph.getPen(), transform)
-                parse_path(d, pen)
-                successful = True
-
-            doc.unlink()
-
-            if not successful:
-                print(f"❌ לא ניתן לנתח path עבור {filename}")
+            # חישוב גבולות משולב
+            bounds, combined_pen = get_combined_bbox(d_list)
+            if not bounds:
+                print(f"❌ לא נמצאו גבולות ל-{filename}")
                 continue
 
-            # מרווחים אחידים וברורים בין האותיות
-            glyph.leftMargin = 20
-            glyph.rightMargin = 20
+            xMin, yMin, xMax, yMax = bounds
+            width = xMax - xMin
+            height = yMax - yMin
 
-            # קביעת רוחב כולל עם ריווח מוגדל
-            glyph.width = int(max_width + glyph.leftMargin + glyph.rightMargin + 40)
+            # scale אם האות גבוהה מדי
+            transform = Identity
+            if height > 700:
+                scale = 700 / height
+                transform = transform.scale(scale)
 
-            print(f"✅ {name} נוסף בהצלחה, רוחב: {glyph.width}")
+            # תזוזות מיוחדות
+            if name == "yod":
+                transform = transform.translate(0, -80)
+            elif name == "lamed":
+                transform = transform.translate(0, 120)
+            elif name == "qof":
+                transform = transform.translate(0, -120)
+            elif name == "kaf":
+                transform = transform.translate(0, 190)
+
+            # טרנספורמציה לכל הגליף יחד
+            pen = TransformPen(glyph.getPen(), transform)
+            combined_pen.replay(pen)
+
+            # ריווח ברור בין אותיות
+            glyph.leftMargin = 25
+            glyph.rightMargin = 25
+            glyph.width = int(width + glyph.leftMargin + glyph.rightMargin + 60)
+
+            print(f"✅ {name} נוסף, רוחב כולל: {glyph.width}")
             used_letters.add(name)
             count += 1
 
         except Exception as e:
             print(f"❌ שגיאה בעיבוד {filename}: {e}")
 
+    # חיפוש אותיות חסרות
     missing_letters = sorted(set(letter_map.keys()) - used_letters)
     if missing_letters:
         print("\n🔻 אותיות שלא נכנסו:")
@@ -144,3 +133,4 @@ def generate_ttf(svg_folder, output_ttf):
     except Exception as e:
         print(f"❌ שגיאה בשמירת הפונט: {e}")
         return False
+
