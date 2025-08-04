@@ -71,7 +71,6 @@ def generate_ttf(svg_folder, output_ttf):
                 count += 1
                 continue
 
-            # חישוב גבולות משולב
             bounds, combined_pen = get_combined_bbox(d_list)
             if not bounds:
                 print(f"❌ לא נמצאו גבולות ל-{filename}")
@@ -81,13 +80,11 @@ def generate_ttf(svg_folder, output_ttf):
             width = xMax - xMin
             height = yMax - yMin
 
-            # scale אם האות גבוהה מדי
             transform = Identity
             if height > 700:
                 scale = 700 / height
                 transform = transform.scale(scale)
 
-            # תזוזות מיוחדות
             if name == "yod":
                 transform = transform.translate(0, -80)
             elif name == "lamed":
@@ -97,14 +94,14 @@ def generate_ttf(svg_folder, output_ttf):
             elif name == "kaf":
                 transform = transform.translate(0, 190)
 
-            # טרנספורמציה לכל הגליף יחד
             pen = TransformPen(glyph.getPen(), transform)
             combined_pen.replay(pen)
 
-            # ריווח ברור בין אותיות
             glyph.leftMargin = 25
             glyph.rightMargin = 25
-            glyph.width = int(width + glyph.leftMargin + glyph.rightMargin + 60)
+
+            # קביעת רוחב מינימלי (מונע חפיפות / כפילויות)
+            glyph.width = max(int(width + glyph.leftMargin + glyph.rightMargin + 60), 400)
 
             print(f"✅ {name} נוסף, רוחב כולל: {glyph.width}")
             used_letters.add(name)
@@ -113,7 +110,6 @@ def generate_ttf(svg_folder, output_ttf):
         except Exception as e:
             print(f"❌ שגיאה בעיבוד {filename}: {e}")
 
-    # חיפוש אותיות חסרות
     missing_letters = sorted(set(letter_map.keys()) - used_letters)
     if missing_letters:
         print("\n🔻 אותיות שלא נכנסו:")
@@ -133,4 +129,3 @@ def generate_ttf(svg_folder, output_ttf):
     except Exception as e:
         print(f"❌ שגיאה בשמירת הפונט: {e}")
         return False
-
