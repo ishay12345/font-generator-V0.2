@@ -1,8 +1,10 @@
 # backend/split_letters.py
+# backend/split_letters.py
 import cv2
 import os
 import numpy as np
 import hashlib
+from collections import defaultdict
 
 def split_letters_from_image(image_path, output_dir):
     os.makedirs(output_dir, exist_ok=True)
@@ -19,8 +21,8 @@ def split_letters_from_image(image_path, output_dir):
     def iou(boxA, boxB):
         xA = max(boxA[0], boxB[0])
         yA = max(boxA[1], boxB[1])
-        xB = min(boxA[0]+boxA[2], boxB[0]+boxB[2])
-        yB = min(boxA[1]+boxA[3], boxB[1]+boxB[3])
+        xB = min(boxA[0] + boxA[2], boxB[0] + boxB[2])
+        yB = min(boxA[1] + boxA[3], boxB[1] + boxB[3])
         interArea = max(0, xB - xA) * max(0, yB - yA)
         boxAArea = boxA[2] * boxA[3]
         boxBArea = boxB[2] * boxB[3]
@@ -30,19 +32,21 @@ def split_letters_from_image(image_path, output_dir):
         merged = []
         used = [False] * len(boxes)
         for i in range(len(boxes)):
-            if used[i]: continue
+            if used[i]:
+                continue
             x1, y1, w1, h1 = boxes[i]
             new_box = [x1, y1, w1, h1]
             used[i] = True
             for j in range(i + 1, len(boxes)):
-                if used[j]: continue
+                if used[j]:
+                    continue
                 x2, y2, w2, h2 = boxes[j]
                 if iou(new_box, [x2, y2, w2, h2]) > iou_threshold or \
                    (abs(x1 - x2) < proximity and abs(y1 - y2) < proximity):
                     nx = min(new_box[0], x2)
                     ny = min(new_box[1], y2)
-                    nw = max(new_box[0]+new_box[2], x2+w2) - nx
-                    nh = max(new_box[1]+new_box[3], y2+h2) - ny
+                    nw = max(new_box[0] + new_box[2], x2 + w2) - nx
+                    nh = max(new_box[1] + new_box[3], y2 + h2) - ny
                     new_box = [nx, ny, nw, nh]
                     used[j] = True
             merged.append(new_box)
@@ -62,24 +66,21 @@ def split_letters_from_image(image_path, output_dir):
         if not inside:
             filtered.append([x, y, w, h])
 
-    # סידור לפי שורות
-    filtered.sort(key=lambda b: b[1])
-    rows = []
+    # סידור לשורות לפי גובה
+    line_dict = defaultdict(list)
     for b in filtered:
-        x, y, w, h = b
-        placed = False
-        for row in rows:
-            if abs(row[0][1] - y) < h:
-                row.append(b)
-                placed = True
-                break
-        if not placed:
-            rows.append([b])
-    rows.sort(key=lambda r: r[0][1])
+        y_center = b[1] + b[3] // 2
+        row_key = y_center // 100  # גובה שורה בקירוב
+        line_dict[row_key].append(b)
+
+    rows = []
+    for key in sorted(line_dict.keys()):
+        row = line_dict[key]
+        row.sort(key=lambda b: -b[0])  # מימין לשמאל
+        rows.append(row)
 
     ordered = []
     for row in rows:
-        row.sort(key=lambda b: -b[0])  # מימין לשמאל
         ordered.extend(row)
 
     hebrew_letters = [
@@ -98,13 +99,13 @@ def split_letters_from_image(image_path, output_dir):
         x2, y2 = min(x + w + padding, img.shape[1]), min(y + h + padding, img.shape[0])
         crop = img[y1:y2, x1:x2]
 
-        # הקטנת אות לגודל אחיד אם היא גדולה מדי
+        # הקטנת אות גדולה מדי
         target_size = 120
         scale = target_size / max(crop.shape)
         if scale < 1.0:
-            crop = cv2.resize(crop, (int(crop.shape[1] * scale), int(crop.shape[0] * scale)),
-                              interpolation=cv2.INTER_AREA)
+            crop = cv2.resize(crop, (int(crop.shape[1] * scale), int(crop.shape[0] * scale)), interpolation=cv2.INTER_AREA)
 
+        # בדיקת כפילות
         hash_val = hashlib.sha256(crop.tobytes()).hexdigest()
         if hash_val in seen_hashes:
             continue
