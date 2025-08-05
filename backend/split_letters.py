@@ -2,14 +2,10 @@
 import cv2
 import os
 import numpy as np
-import hashlib
 
-def hash_image(image):
-    return hashlib.sha256(image.tobytes()).hexdigest()
-
-def images_similar(img1, img2, threshold=0.005):
-    img1 = cv2.resize(img1, (64, 64))
-    img2 = cv2.resize(img2, (64, 64))
+def is_similar(image1, image2, threshold=0.005):
+    img1 = cv2.resize(image1, (64, 64))
+    img2 = cv2.resize(image2, (64, 64))
     h1 = cv2.HuMoments(cv2.moments(img1)).flatten()
     h2 = cv2.HuMoments(cv2.moments(img2)).flatten()
     distance = np.linalg.norm(np.log1p(h1) - np.log1p(h2))
@@ -20,7 +16,7 @@ def split_letters_from_image(image_path, output_dir):
     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
     _, thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
     dilated = cv2.dilate(thresh, kernel, iterations=1)
     clean = cv2.morphologyEx(dilated, cv2.MORPH_CLOSE, kernel, iterations=1)
 
@@ -30,8 +26,8 @@ def split_letters_from_image(image_path, output_dir):
     def iou(boxA, boxB):
         xA = max(boxA[0], boxB[0])
         yA = max(boxA[1], boxB[1])
-        xB = min(boxA[0] + boxA[2], boxB[0] + boxB[2])
-        yB = min(boxA[1] + boxA[3], boxB[1] + boxB[3])
+        xB = min(boxA[0]+boxA[2], boxB[0]+boxB[2])
+        yB = min(boxA[1]+boxA[3], boxB[1]+boxB[3])
         interArea = max(0, xB - xA) * max(0, yB - yA)
         boxAArea = boxA[2] * boxA[3]
         boxBArea = boxB[2] * boxB[3]
@@ -39,24 +35,20 @@ def split_letters_from_image(image_path, output_dir):
 
     def merge_overlapping_boxes(boxes, iou_threshold=0.2, proximity=20):
         merged = []
-        used = [False] * len(boxes)
+        used = [False]*len(boxes)
         for i in range(len(boxes)):
-            if used[i]:
-                continue
-            x1, y1, w1, h1 = boxes[i]
-            new_box = [x1, y1, w1, h1]
+            if used[i]: continue
+            x1,y1,w1,h1 = boxes[i]
+            new_box = [x1,y1,w1,h1]
             used[i] = True
-            for j in range(i + 1, len(boxes)):
-                if used[j]:
-                    continue
-                x2, y2, w2, h2 = boxes[j]
-                if iou(new_box, [x2, y2, w2, h2]) > iou_threshold or (
-                    abs(x1 - x2) < proximity and abs(y1 - y2) < proximity
-                ):
+            for j in range(i+1, len(boxes)):
+                if used[j]: continue
+                x2,y2,w2,h2 = boxes[j]
+                if iou(new_box, [x2,y2,w2,h2]) > iou_threshold or (abs(x1 - x2) < proximity and abs(y1 - y2) < proximity):
                     nx = min(new_box[0], x2)
                     ny = min(new_box[1], y2)
-                    nw = max(new_box[0] + new_box[2], x2 + w2) - nx
-                    nh = max(new_box[1] + new_box[3], y2 + h2) - ny
+                    nw = max(new_box[0]+new_box[2], x2+w2) - nx
+                    nh = max(new_box[1]+new_box[3], y2+h2) - ny
                     new_box = [nx, ny, nw, nh]
                     used[j] = True
             merged.append(new_box)
@@ -65,26 +57,26 @@ def split_letters_from_image(image_path, output_dir):
     merged = merge_overlapping_boxes(boxes)
 
     filtered = []
-    for x, y, w, h in merged:
-        if w * h < 60:
+    for x,y,w,h in merged:
+        if w*h < 60:
             continue
         inside = False
-        for ox, oy, ow, oh in merged:
-            if (x, y, w, h) != (ox, oy, ow, oh) and x >= ox and y >= oy and x + w <= ox + ow and y + h <= oy + oh:
+        for ox,oy,ow,oh in merged:
+            if (x,y,w,h) != (ox,oy,ow,oh) and x>=ox and y>=oy and x+w<=ox+ow and y+h<=oy+oh:
                 inside = True
                 break
         if not inside:
-            filtered.append([x, y, w, h])
+            filtered.append([x,y,w,h])
 
     filtered.sort(key=lambda b: b[1])
     rows = []
     for b in filtered:
-        x, y, w, h = b
-        placed = False
+        x,y,w,h = b
+        placed=False
         for row in rows:
             if abs(row[0][1] - y) < h:
                 row.append(b)
-                placed = True
+                placed=True
                 break
         if not placed:
             rows.append([b])
@@ -96,37 +88,34 @@ def split_letters_from_image(image_path, output_dir):
         ordered.extend(row)
 
     hebrew_letters = [
-        'alef', 'bet', 'gimel', 'dalet', 'he', 'vav', 'zayin', 'het', 'tet',
-        'yod', 'kaf', 'lamed', 'mem', 'nun', 'samekh', 'ayin', 'pe', 'tsadi',
-        'qof', 'resh', 'shin', 'tav', 'final_kaf', 'final_mem', 'final_nun', 'final_pe', 'final_tsadi'
+        'alef','bet','gimel','dalet','he','vav','zayin','het','tet',
+        'yod','kaf','lamed','mem','nun','samekh','ayin','pe','tsadi',
+        'qof','resh','shin','tav','final_kaf','final_mem','final_nun','final_pe','final_tsadi'
     ]
 
     padding = 10
-    seen_hashes = set()
-    saved_crops = []
-    saved_count = 0
+    saved_images = []
+    count = 0
+    i = 0
 
-    for i, (x, y, w, h) in enumerate(ordered):
-        if saved_count >= len(hebrew_letters):
-            break
-        x1, y1 = max(x - padding, 0), max(y - padding, 0)
-        x2, y2 = min(x + w + padding, img.shape[1]), min(y + h + padding, img.shape[0])
+    while count < 27 and i < len(ordered):
+        x,y,w,h = ordered[i]
+        x1,y1 = max(x-padding,0), max(y-padding,0)
+        x2,y2 = min(x+w+padding, img.shape[1]), min(y+h+padding, img.shape[0])
         crop = img[y1:y2, x1:x2]
 
-        # השוואה לאות 7 (zayin) אם זו האות 5 (vav) או 20
-        if saved_count in [5, 20] and len(saved_crops) > 7:
-            if images_similar(crop, saved_crops[7]):
-                print(f"🚫 אות {saved_count} דולגה (דומה לאות 7)")
-                continue
+        is_duplicate = False
+        for saved in saved_images:
+            if is_similar(crop, saved):
+                is_duplicate = True
+                break
 
-        crop_hash = hash_image(crop)
-        if crop_hash in seen_hashes:
-            continue
-        seen_hashes.add(crop_hash)
-        saved_crops.append(crop)
+        if not is_duplicate:
+            saved_images.append(crop)
+            name = hebrew_letters[count]
+            cv2.imwrite(os.path.join(output_dir, f"{count:02d}_{name}.png"), crop)
+            count += 1
 
-        name = hebrew_letters[saved_count]
-        cv2.imwrite(os.path.join(output_dir, f"{saved_count:02d}_{name}.png"), crop)
-        saved_count += 1
+        i += 1
 
-    print(f"✅ נחתכו {saved_count} אותיות ונשמרו בתיקייה:\n{output_dir}")
+    print(f"✅ נחתכו {count} אותיות ונשמרו בתיקייה:\n{output_dir}")
