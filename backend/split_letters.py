@@ -14,29 +14,34 @@ def split_letters_from_image(image_path, output_dir):
     contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     boxes = [cv2.boundingRect(c) for c in contours if cv2.boundingRect(c)[2] * cv2.boundingRect(c)[3] > 100]
 
-    # קיבוץ לשורות לפי גובה עם סובלנות
+    # קיבוץ לשורות לפי Y עם סובלנות
     line_dict = defaultdict(list)
-    line_tolerance = 50
-    boxes.sort(key=lambda b: b[1])  # מיון לפי Y
+    line_tolerance = 60
+    boxes.sort(key=lambda b: b[1])
 
-    line_index = 0
-    current_line_y = None
+    line_ys = []
     for box in boxes:
         x, y, w, h = box
-        y_center = y + h // 2
-        if current_line_y is None or abs(y_center - current_line_y) > line_tolerance:
-            line_index += 1
-            current_line_y = y_center
-        line_dict[line_index].append(box)
+        cy = y + h // 2
+        matched = False
+        for i, avg_y in enumerate(line_ys):
+            if abs(cy - avg_y) < line_tolerance:
+                line_dict[i].append(box)
+                line_ys[i] = (line_ys[i] + cy) // 2
+                matched = True
+                break
+        if not matched:
+            index = len(line_ys)
+            line_dict[index].append(box)
+            line_ys.append(cy)
 
-    # מיון בכל שורה מימין לשמאל
+    # סדר מימין לשמאל בכל שורה
     sorted_lines = []
-    for key in sorted(line_dict.keys()):
-        line = line_dict[key]
-        line.sort(key=lambda b: -b[0])  # ימין לשמאל
+    for idx in sorted(line_dict.keys()):
+        line = line_dict[idx]
+        line.sort(key=lambda b: -b[0])  # מימין לשמאל
         sorted_lines.append(line)
 
-    # רשימת האותיות לפי הסדר הנכון
     hebrew_letters = [
         'alef','bet','gimel','dalet',
         'he','vav','zayin','het',
@@ -48,10 +53,11 @@ def split_letters_from_image(image_path, output_dir):
     ]
 
     used_positions = []
+    taken_letters = set()
     saved = 0
     padding = 15
 
-    def is_duplicate(x, y, w, h, positions, min_dist=25):
+    def is_duplicate(x, y, w, h, positions, min_dist=30):
         cx, cy = x + w // 2, y + h // 2
         for px, py in positions:
             if abs(cx - px) < min_dist and abs(cy - py) < min_dist:
@@ -65,7 +71,7 @@ def split_letters_from_image(image_path, output_dir):
 
             letter_name = hebrew_letters[saved]
 
-            # תנאים מיוחדים:
+            # תנאים מיוחדים – הגבלה למיקום
             if letter_name == 'alef' and not (row_index == 0 and col_index == 0):
                 continue
             if letter_name == 'vav' and not (row_index == 1 and col_index == 1):
@@ -77,8 +83,11 @@ def split_letters_from_image(image_path, output_dir):
 
             if is_duplicate(x, y, w, h, used_positions):
                 continue
+            if letter_name in taken_letters:
+                continue
 
             used_positions.append((x + w // 2, y + h // 2))
+            taken_letters.add(letter_name)
 
             x1 = max(x - padding, 0)
             y1 = max(y - padding, 0)
@@ -92,3 +101,4 @@ def split_letters_from_image(image_path, output_dir):
             saved += 1
 
     print(f"\n✅ נשמרו {saved} אותיות בתיקייה:\n{output_dir}")
+
