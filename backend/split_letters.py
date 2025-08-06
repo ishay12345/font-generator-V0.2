@@ -6,18 +6,17 @@ from collections import defaultdict
 
 def split_letters_from_image(image_path, output_dir):
     os.makedirs(output_dir, exist_ok=True)
-    img = cv2.imread(image_path)  # בצבע
+    img = cv2.imread(image_path)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
     contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    boxes = [cv2.boundingRect(c) for c in contours if cv2.boundingRect(c)[2] * cv2.boundingRect(c)[3] > 100]
+    boxes = [cv2.boundingRect(c) for c in contours if cv2.boundingRect(c)[2] * cv2.boundingRect(c)[3] > 80]
 
-    # קיבוץ לשורות עם סובלנות לגובה
+    # קיבוץ לפי שורות
     line_dict = defaultdict(list)
-    line_tolerance = 50
+    line_tolerance = 45
     boxes.sort(key=lambda b: b[1])
-
     line_index = 0
     current_line_y = None
     for box in boxes:
@@ -28,42 +27,23 @@ def split_letters_from_image(image_path, output_dir):
             current_line_y = y_center
         line_dict[line_index].append(box)
 
-    # מיון בתוך שורה: מימין לשמאל
+    # מיון בתוך כל שורה – מימין לשמאל
     sorted_lines = []
     for key in sorted(line_dict.keys()):
         line = line_dict[key]
-        line.sort(key=lambda b: -b[0])  # עברית
+        line.sort(key=lambda b: -b[0])
         sorted_lines.append(line)
 
-    # flatten לפי סדר שורות ואז ימין לשמאל
-    all_boxes = []
-    for line in sorted_lines:
-        all_boxes.extend(line)
-
+    # סדר האותיות העברי כולל סופיות
     hebrew_letters = [
         'alef','bet','gimel','dalet','he','vav','zayin','het','tet',
         'yod','kaf','lamed','mem','nun','samekh','ayin','pe','tsadi',
         'qof','resh','shin','tav','final_kaf','final_mem','final_nun','final_pe','final_tsadi'
     ]
 
-    # הכנסת תוספות לפי מיקום אותיות ספציפיות
-    def insert_after_letter(boxes, letter_index, insert_box):
-        if letter_index + 1 >= len(boxes):
-            boxes.append(insert_box)
-        else:
-            boxes.insert(letter_index + 1, insert_box)
-        return boxes
-
-    def find_nearest_box(boxes, condition_fn):
-        for i, box in enumerate(boxes):
-            if condition_fn(i, box):
-                return i, box
-        return None, None
-
-    # הכנה לשמירה
     used_positions = []
-    padding = 15
     saved = 0
+    padding = 15
 
     def is_duplicate(x, y, w, h, positions, min_dist=25):
         cx, cy = x + w//2, y + h//2
@@ -72,59 +52,37 @@ def split_letters_from_image(image_path, output_dir):
                 return True
         return False
 
-    final_boxes = []
-    taken_letters = []
+    for row_index, row in enumerate(sorted_lines):
+        for col_index, (x, y, w, h) in enumerate(row):
+            if saved >= len(hebrew_letters):
+                break
 
-    for i, box in enumerate(all_boxes):
-        if saved >= len(hebrew_letters):
-            break
-        x, y, w, h = box
+            name = hebrew_letters[saved]
 
-        if is_duplicate(x, y, w, h, used_positions):
-            continue
+            # תנאים מותאמים:
+            if name == 'yod' and not (row_index == 2 and col_index == 1):
+                continue
+            if name == 'vav' and not (row_index == 1 and col_index == 1):
+                continue
+            if name == 'he' and not (row_index == 1 and col_index == 2):  # ה אחרי ד
+                continue
+            if name == 'final_nun' and not (row_index == 6 and col_index == 0):  # ן אחרי ם
+                continue
 
-        used_positions.append((x + w//2, y + h//2))
-        taken_letters.append((box, saved))
-        saved += 1
+            if is_duplicate(x, y, w, h, used_positions):
+                continue
 
-    # הוספת האות "he" אחרי "dalet"
-    dalet_index = [i for i, (_, idx) in enumerate(taken_letters) if hebrew_letters[idx] == "dalet"]
-    if dalet_index:
-        dalet_box, dalet_pos = taken_letters[dalet_index[0]]
-        # מצא תיבה שנמצאת מתחת ומימין לדalet
-        he_candidates = [b for b in all_boxes if b[0] > dalet_box[0] - 50 and b[1] > dalet_box[1] + 20]
-        if he_candidates:
-            he_box = sorted(he_candidates, key=lambda b: (b[1], -b[0]))[0]
-            taken_letters.insert(dalet_index[0] + 1, (he_box, hebrew_letters.index("he")))
+            used_positions.append((x + w//2, y + h//2))
 
-    # הוספת "final_nun" אחרי "final_mem"
-    mem_index = [i for i, (_, idx) in enumerate(taken_letters) if hebrew_letters[idx] == "final_mem"]
-    if mem_index:
-        mem_box, mem_pos = taken_letters[mem_index[0]]
-        nun_candidates = [b for b in all_boxes if b[0] > mem_box[0] - 50 and b[1] > mem_box[1] + 20]
-        if nun_candidates:
-            nun_box = sorted(nun_candidates, key=lambda b: (b[1], -b[0]))[0]
-            taken_letters.insert(mem_index[0] + 1, (nun_box, hebrew_letters.index("final_nun")))
+            x1 = max(x - padding, 0)
+            y1 = max(y - padding, 0)
+            x2 = min(x + w + padding, img.shape[1])
+            y2 = min(y + h + padding, img.shape[0])
+            crop = img[y1:y2, x1:x2]
 
-    # שמירה בפועל
-    saved_names = set()
-    for i, (box, letter_index) in enumerate(taken_letters):
-        if letter_index >= len(hebrew_letters):
-            continue
-        letter_name = hebrew_letters[letter_index]
-        if letter_name in saved_names:
-            continue  # לא לשמור כפול
-        saved_names.add(letter_name)
+            out_path = os.path.join(output_dir, f"{saved:02d}_{name}.png")
+            cv2.imwrite(out_path, crop)
+            print(f"שמורה אות {saved}: {name}")
+            saved += 1
 
-        x, y, w, h = box
-        x1 = max(x - padding, 0)
-        y1 = max(y - padding, 0)
-        x2 = min(x + w + padding, img.shape[1])
-        y2 = min(y + h + padding, img.shape[0])
-        crop = img[y1:y2, x1:x2]
-
-        out_path = os.path.join(output_dir, f"{letter_index:02d}_{letter_name}.png")
-        cv2.imwrite(out_path, crop)
-        print(f"שמורה אות {letter_index}: {letter_name}")
-
-    print(f"\n✅ נשמרו {len(saved_names)} אותיות בתיקייה:\n{output_dir}")
+    print(f"\n✅ נשמרו {saved} אותיות בתיקייה:\n{output_dir}")
