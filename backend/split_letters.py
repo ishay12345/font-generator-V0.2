@@ -35,7 +35,7 @@ def split_letters_from_image(image_path, output_dir):
     for row_index, num_cols in enumerate(row_configs):
         col_width = width / 4  # גם בשורה עם 3, נשאר רוחב של 4 משבצות
 
-        for col in reversed(range(num_cols)):  # חיתוך מימין לשמאל
+        for col in reversed(range(num_cols)):  # 🔁 שינוי: מימין לשמאל
             if saved >= len(hebrew_letters):
                 break
 
