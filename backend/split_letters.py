@@ -2,7 +2,7 @@
 import cv2
 import os
 import numpy as np
-import hashlib
+from collections import defaultdict
 
 def split_letters_from_image(image_path, output_dir, show_debug=False):
     os.makedirs(output_dir, exist_ok=True)
@@ -11,10 +11,36 @@ def split_letters_from_image(image_path, output_dir, show_debug=False):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-    height, width = binary.shape
+    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    boxes = [cv2.boundingRect(c) for c in contours if cv2.boundingRect(c)[2] * cv2.boundingRect(c)[3] > 100]
 
-    # מספר אותיות בכל שורה
-    row_configs = [4, 4, 4, 4, 4, 4, 3]  # 6 שורות רגילות + שורה אחת של סופיות
+    # קיבוץ לפי שורות עם סובלנות
+    line_dict = defaultdict(list)
+    line_tolerance = 60
+    boxes.sort(key=lambda b: b[1])
+
+    line_ys = []
+    for box in boxes:
+        x, y, w, h = box
+        cy = y + h // 2
+        matched = False
+        for i, avg_y in enumerate(line_ys):
+            if abs(cy - avg_y) < line_tolerance:
+                line_dict[i].append(box)
+                line_ys[i] = (line_ys[i] + cy) // 2
+                matched = True
+                break
+        if not matched:
+            index = len(line_ys)
+            line_dict[index].append(box)
+            line_ys.append(cy)
+
+    # סדר מימין לשמאל בכל שורה
+    sorted_lines = []
+    for idx in sorted(line_dict.keys()):
+        line = line_dict[idx]
+        line.sort(key=lambda b: -b[0])
+        sorted_lines.append(line)
 
     hebrew_letters = [
         'alef','bet','gimel','dalet',
@@ -26,69 +52,66 @@ def split_letters_from_image(image_path, output_dir, show_debug=False):
         'final_nun','final_pe','final_tsadi'
     ]
 
-    seen_hashes = set()
+    used_positions = []
+    taken_letters = set()
     saved = 0
     padding = 15
-    row_height = height / len(row_configs)
 
-    used_positions = []
-
-    def is_duplicate(crop):
-        h = hashlib.sha256(crop.tobytes()).hexdigest()
-        if h in seen_hashes:
-            return True
-        seen_hashes.add(h)
+    def is_duplicate(x, y, w, h, positions, min_dist=30):
+        cx, cy = x + w // 2, y + h // 2
+        for px, py in positions:
+            if abs(cx - px) < min_dist and abs(cy - py) < min_dist:
+                return True
         return False
 
-    def save_crop(crop, x1, y1, x2, y2, name, index):
-        if crop.size == 0:
-            return False
-        if is_duplicate(crop):
-            return False
-        out_path = os.path.join(output_dir, f"{index:02d}_{name}.png")
-        cv2.imwrite(out_path, crop)
-        if show_debug:
-            cv2.rectangle(debug_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(debug_img, f"{index}:{name}", (x1, y1 - 5),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-        print(f"שמורה אות {index}: {name}")
-        return True
-
-    for row_index, num_cols in enumerate(row_configs):
-        col_width = width / 4  # גם אם יש רק 3 תאים בשורה, נשמור מבנה של 4 משבצות
-        for col in range(num_cols):
+    for row_index, row in enumerate(sorted_lines):
+        for col_index, (x, y, w, h) in enumerate(row):
             if saved >= len(hebrew_letters):
                 break
 
             letter_name = hebrew_letters[saved]
 
-            # חישוב גבולות
-            x_start = int(col * col_width)
-            x_end = int((col + 1) * col_width)
-            y_start = int(row_index * row_height)
-            y_end = int((row_index + 1) * row_height)
+            # תנאים מיוחדים:
+            if letter_name == 'he' and not (row_index == 1 and col_index == 0):
+                continue  # אחרי ד צריכה להיות ה בשורה 2, עמודה 1 (מימין)
+            if letter_name == 'final_nun' and not (row_index == 6 and col_index == 0):
+                continue  # ן בשורה אחרונה, עמודה ראשונה
+            if letter_name == 'alef' and not (row_index == 0 and col_index == 0):
+                continue
+            if letter_name == 'vav' and not (row_index == 1 and col_index == 1):
+                continue
+            if letter_name == 'yod' and not (row_index == 2 and col_index == 1):
+                continue
 
-            # תוספת סובלנות
-            x1 = max(x_start - padding, 0)
-            x2 = min(x_end + padding, width)
-            y1 = max(y_start - padding, 0)
-            y2 = min(y_end + padding, height)
+            # בדיקת כפילות
+            if is_duplicate(x, y, w, h, used_positions):
+                continue
+            if letter_name in taken_letters:
+                continue
 
+            used_positions.append((x + w // 2, y + h // 2))
+            taken_letters.add(letter_name)
+
+            x1 = max(x - padding, 0)
+            y1 = max(y - padding, 0)
+            x2 = min(x + w + padding, img.shape[1])
+            y2 = min(y + h + padding, img.shape[0])
             crop = img[y1:y2, x1:x2]
-            crop_gray = binary[y1:y2, x1:x2]
 
-            # בדיקה האם יש תוכן אות (פיקסלים שחורים)
-            nonzero_ratio = np.count_nonzero(crop_gray) / crop_gray.size
-            if nonzero_ratio < 0.01:
-                continue  # תא ריק
+            out_path = os.path.join(output_dir, f"{saved:02d}_{letter_name}.png")
+            cv2.imwrite(out_path, crop)
 
-            success = save_crop(crop, x1, y1, x2, y2, letter_name, saved)
-            if success:
-                saved += 1
+            if show_debug:
+                cv2.rectangle(debug_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(debug_img, f"{saved}:{letter_name}", (x1, y1 - 5),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+
+            print(f"שמורה אות {saved}: {letter_name}")
+            saved += 1
 
     if show_debug:
         debug_path = os.path.join(output_dir, "debug_boxes.png")
         cv2.imwrite(debug_path, debug_img)
-        print(f"\n🖼️ שמורה תמונת DEBUG ב: {debug_path}")
+        print(f"\n🖼️ נשמר גם קובץ debug עם תיבות ב: {debug_path}")
 
     print(f"\n✅ נשמרו {saved} אותיות בתיקייה:\n{output_dir}")
