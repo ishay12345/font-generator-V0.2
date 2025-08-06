@@ -4,19 +4,48 @@ import cv2
 import os
 import numpy as np
 import hashlib
+from collections import defaultdict
 
 def split_letters_from_image(image_path, output_dir):
     os.makedirs(output_dir, exist_ok=True)
-    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    img = cv2.imread(image_path)  # שים לב - לא בשחור לבן
 
-    # הפוך לבינארי (לבן=רקע, שחור=כתב)
-    _, binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-    height, width = img.shape
+    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    boxes = [cv2.boundingRect(c) for c in contours]
 
-    # פריסת שורות ועמודות
-    row_configs = [4, 4, 4, 4, 4, 4, 3]  # שורת סופיות אחרונה עם 3 אותיות
+    # סינון רעשים קטנים
+    boxes = [b for b in boxes if b[2] * b[3] > 100]
 
+    # קיבוץ לפי שורות עם סובלנות
+    line_dict = defaultdict(list)
+    line_tolerance = 40  # סובלנות לגובה
+
+    # מיון כל התיבות לפי ציר Y
+    boxes.sort(key=lambda b: b[1])
+
+    line_index = 0
+    current_line_y = None
+    for box in boxes:
+        x, y, w, h = box
+        y_center = y + h // 2
+        if current_line_y is None:
+            current_line_y = y_center
+        elif abs(y_center - current_line_y) > line_tolerance:
+            line_index += 1
+            current_line_y = y_center
+        line_dict[line_index].append(box)
+
+    # מיון כל שורה לפי X מימין לשמאל
+    sorted_lines = []
+    for line_key in sorted(line_dict.keys()):
+        line = line_dict[line_key]
+        line.sort(key=lambda b: -b[0])  # מימין לשמאל
+        sorted_lines.append(line)
+
+    # רשימת האותיות לפי סדר
     hebrew_letters = [
         'alef','bet','gimel','dalet',
         'he','vav','zayin','het',
@@ -27,56 +56,29 @@ def split_letters_from_image(image_path, output_dir):
         'final_nun','final_pe','final_tsadi'
     ]
 
+    # חיתוך ושמירה
     seen_hashes = set()
     saved = 0
     padding = 15
-    row_height = height / len(row_configs)
 
-    for row_index, num_cols in enumerate(row_configs):
-        col_width = width / 4  # גם בשורה עם 3, נשאר רוחב של 4 משבצות
-
-        for col in reversed(range(num_cols)):  # 🔁 שינוי: מימין לשמאל
+    for row in sorted_lines:
+        for (x, y, w, h) in row:
             if saved >= len(hebrew_letters):
                 break
 
-            # גבולות התא המשוער
-            x_start = int(col * col_width)
-            x_end = int((col + 1) * col_width)
-            y_start = int(row_index * row_height)
-            y_end = int((row_index + 1) * row_height)
-
-            # הוספת מרחב סובלנות סביב האות
-            x1 = max(x_start - padding, 0)
-            x2 = min(x_end + padding, width)
-            y1 = max(y_start - padding, 0)
-            y2 = min(y_end + padding, height)
-
-            letter_crop = binary[y1:y2, x1:x2]
-
-            # בדיקה האם יש שם משהו בכלל (פיקסלים שחורים)
-            nonzero_ratio = np.count_nonzero(letter_crop) / letter_crop.size
-            if nonzero_ratio < 0.01:
-                continue  # ריק לגמרי, דלג
-
-            # הקטנת אות גדולה מדי
-            target_size = 120
-            scale = target_size / max(letter_crop.shape)
-            if scale < 1.0:
-                letter_crop = cv2.resize(
-                    letter_crop,
-                    (int(letter_crop.shape[1] * scale), int(letter_crop.shape[0] * scale)),
-                    interpolation=cv2.INTER_AREA
-                )
+            x1, y1 = max(x - padding, 0), max(y - padding, 0)
+            x2, y2 = min(x + w + padding, img.shape[1]), min(y + h + padding, img.shape[0])
+            crop = img[y1:y2, x1:x2]
 
             # בדיקת כפילות לפי hash
-            hash_val = hashlib.sha256(letter_crop.tobytes()).hexdigest()
+            hash_val = hashlib.sha256(crop.tobytes()).hexdigest()
             if hash_val in seen_hashes:
                 continue
             seen_hashes.add(hash_val)
 
             name = hebrew_letters[saved]
             out_path = os.path.join(output_dir, f"{saved:02d}_{name}.png")
-            cv2.imwrite(out_path, 255 - letter_crop)  # הפוך חזרה ללבן רקע
+            cv2.imwrite(out_path, crop)
             saved += 1
 
     print(f"✅ נשמרו {saved} אותיות בתיקייה:\n{output_dir}")
