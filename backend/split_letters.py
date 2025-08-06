@@ -1,5 +1,4 @@
 # backend/split_letters.py
-# backend/split_letters.py
 import cv2
 import os
 import numpy as np
