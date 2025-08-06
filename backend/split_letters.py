@@ -7,17 +7,17 @@ from collections import defaultdict
 
 def split_letters_from_image(image_path, output_dir):
     os.makedirs(output_dir, exist_ok=True)
-    img = cv2.imread(image_path)  # בצבע
+    img = cv2.imread(image_path)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
     contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     boxes = [cv2.boundingRect(c) for c in contours if cv2.boundingRect(c)[2] * cv2.boundingRect(c)[3] > 100]
 
-    # קיבוץ לשורות עם סובלנות לגובה
+    # קיבוץ לשורות לפי גובה עם סובלנות
     line_dict = defaultdict(list)
     line_tolerance = 50
-    boxes.sort(key=lambda b: b[1])
+    boxes.sort(key=lambda b: b[1])  # מיון לפי Y
 
     line_index = 0
     current_line_y = None
@@ -29,13 +29,14 @@ def split_letters_from_image(image_path, output_dir):
             current_line_y = y_center
         line_dict[line_index].append(box)
 
-    # מיון בתוך שורה: מימין לשמאל
+    # מיון בכל שורה מימין לשמאל
     sorted_lines = []
     for key in sorted(line_dict.keys()):
         line = line_dict[key]
-        line.sort(key=lambda b: -b[0])  # עברית
+        line.sort(key=lambda b: -b[0])  # ימין לשמאל
         sorted_lines.append(line)
 
+    # רשימת האותיות לפי הסדר הנכון
     hebrew_letters = [
         'alef','bet','gimel','dalet',
         'he','vav','zayin','het',
@@ -51,7 +52,7 @@ def split_letters_from_image(image_path, output_dir):
     padding = 15
 
     def is_duplicate(x, y, w, h, positions, min_dist=25):
-        cx, cy = x + w//2, y + h//2
+        cx, cy = x + w // 2, y + h // 2
         for px, py in positions:
             if abs(cx - px) < min_dist and abs(cy - py) < min_dist:
                 return True
@@ -64,16 +65,20 @@ def split_letters_from_image(image_path, output_dir):
 
             letter_name = hebrew_letters[saved]
 
-            # תנאים מיוחדים ל־י ו־ו
-            if letter_name == 'yod' and not (row_index == 2 and col_index == 1):
+            # תנאים מיוחדים:
+            if letter_name == 'alef' and not (row_index == 0 and col_index == 0):
                 continue
             if letter_name == 'vav' and not (row_index == 1 and col_index == 1):
+                continue
+            if letter_name == 'yod' and not (row_index == 2 and col_index == 1):
+                continue
+            if letter_name == 'final_nun' and not (row_index == 6 and col_index == 0):
                 continue
 
             if is_duplicate(x, y, w, h, used_positions):
                 continue
 
-            used_positions.append((x + w//2, y + h//2))
+            used_positions.append((x + w // 2, y + h // 2))
 
             x1 = max(x - padding, 0)
             y1 = max(y - padding, 0)
