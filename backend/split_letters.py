@@ -51,7 +51,7 @@ def split_letters_from_image(image_path, output_dir):
     ]
 
     padding_x = 50  # ריווח גדול בין אותיות בציר האופקי
-    padding_y = 40  # ריווח בציר האנכי
+    padding_y = 25  # ריווח בציר האנכי
     saved = 0
     inserted_vav = False
 
