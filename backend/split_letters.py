@@ -2,7 +2,7 @@ import cv2
 import os
 import numpy as np
 
-def split_letters_pixel_scan(image_path, output_dir):
+def split_letters_from_image(image_path, output_dir):
     os.makedirs(output_dir, exist_ok=True)
     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
