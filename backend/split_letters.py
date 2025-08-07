@@ -50,13 +50,16 @@ def split_letters_from_image(image_path, output_dir):
         'qof', 'resh', 'shin', 'tav', 'final_kaf', 'final_mem', 'final_nun', 'final_pe', 'final_tsadi'
     ]
 
-    padding = 20
+    padding_x = 50  # ריווח גדול בין אותיות בציר האופקי
+    padding_y = 20  # ריווח בציר האנכי
     saved = 0
     inserted_vav = False
 
     for i, (x, y, w, h) in enumerate(ordered):
-        x1, y1 = max(x - padding, 0), max(y - padding, 0)
-        x2, y2 = min(x + w + padding, img.shape[1]), min(y + h + padding, img.shape[0])
+        x1 = max(x - padding_x, 0)
+        y1 = max(y - padding_y, 0)
+        x2 = min(x + w + padding_x, img.shape[1])
+        y2 = min(y + h + padding_y, img.shape[0])
         crop = img[y1:y2, x1:x2]
 
         is_narrow = w < 20 and h > 30
@@ -71,8 +74,10 @@ def split_letters_from_image(image_path, output_dir):
             vav_candidates = [b for b in ordered if b[2] < 20 and b[3] > 30 and b != (x, y, w, h)]
             if vav_candidates:
                 vx, vy, vw, vh = sorted(vav_candidates, key=lambda b: b[0])[-1]
-                vx1, vy1 = max(vx - padding, 0), max(vy - padding, 0)
-                vx2, vy2 = min(vx + vw + padding, img.shape[1]), min(vy + vh + padding, img.shape[0])
+                vx1 = max(vx - padding_x, 0)
+                vy1 = max(vy - padding_y, 0)
+                vx2 = min(vx + vw + padding_x, img.shape[1])
+                vy2 = min(vy + vh + padding_y, img.shape[0])
                 vav_crop = img[vy1:vy2, vx1:vx2]
                 vav_path = os.path.join(output_dir, f"{saved:02d}_vav.png")
                 cv2.imwrite(vav_path, vav_crop)
