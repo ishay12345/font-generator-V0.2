@@ -10,21 +10,19 @@ def split_letters_from_image(image_path, output_dir):
     if img_gray is None:
         raise ValueError(f"Cannot load image: {image_path}")
 
-    # סף Otsu להפוך לבינארי (שחור-לבן)
     _, bw = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-    # ניקוי רעשים קטנים - אופציונלי (ניתן לשנות לפי הצורך)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
     bw = cv2.morphologyEx(bw, cv2.MORPH_OPEN, kernel, iterations=1)
 
-    # איתור רכיבים מחוברים
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bw, connectivity=8)
 
-    min_area = 120  # הגדלתי סינון רעשים כדי למנוע קווים קטנים
+    min_area = 150  # הגבר סינון רעשים
     letter_boxes = []
     for i in range(1, num_labels):
         x, y, w, h, area = stats[i]
-        if area >= min_area:
+        # סינון רכיבים לא רלוונטיים (קטנים מדי או רוחב/גובה חשודים)
+        if area >= min_area and w > 10 and h > 10:
             letter_boxes.append((x, y, w, h))
 
     def sort_boxes_hebrew(boxes, line_tol=15):
@@ -109,17 +107,37 @@ def split_letters_from_image(image_path, output_dir):
         'final_pe', 'final_tsadi', 'final_tzadi'  # ץ אחרונה
     ]
 
-    # האותיות שיש להן הזזה למטה (הורדת y בחיתוך)
-    letters_to_shift_down = ['qof', 'final_kaf', 'final_nun', 'final_pe', 'final_tsadi', 'final_mem', 'final_tzadi']
+    # הורדה למטה בפיקסלים (הגדלתי לפי בקשה)
+    letters_to_shift_down = {
+        'qof': 20,
+        'final_kaf': 20,
+        'final_nun': 20,
+        'final_pe': 20,
+        'final_tsadi': 20,
+        'final_mem': 20,
+        'final_tzadi': 20,
+    }
+
+    # טיפול מיוחד לאות שלפני 'alef' (הניחוש שלי: זו 'vav' או 'final_nun')
+    # אם נמצא שהיא באינדקס 0 (לפני alef), פשוט נתעלם ממנה ולא נשמור
+    # או נוכל לדלג עליה בהתאם
+
+    # נניח האות שלפני alef היא הראשונה אחרי מיון:
+    # נמחק את האות הראשונה אם היא לא 'alef'
+
+    # אז ראשית, נבדוק אם האות הראשונה היא alef, אם לא - נפסל אותה
+    if len(expanded_boxes) > 0:
+        first_box_name = hebrew_letters[0]
+        if first_box_name != 'alef':
+            print(f"⚠️ התיבה הראשונה אינה alef אלא {first_box_name}, היא תדלג!")
+            expanded_boxes = expanded_boxes[1:]
+            hebrew_letters = hebrew_letters[1:]
 
     for i, (x, y, w, h) in enumerate(expanded_boxes[:27]):
         name = hebrew_letters[i]
 
-        shift_down_px = 0
-        if name in letters_to_shift_down:
-            shift_down_px = 12  # אפשר לשנות את כמות הפיקסלים לפי הצורך
+        shift_down_px = letters_to_shift_down.get(name, 0)
 
-        # ודא שה-y החדש לא יחרוג מגבולות התמונה
         ny = y + shift_down_px
         if ny + h > img_gray.shape[0]:
             ny = img_gray.shape[0] - h
