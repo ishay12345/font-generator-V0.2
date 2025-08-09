@@ -1,118 +1,119 @@
 import cv2
 import os
+from pathlib import Path
 import numpy as np
 
 def split_letters_from_image(image_path, output_dir):
-    os.makedirs(output_dir, exist_ok=True)
+    """Split Hebrew letters from image into individual PNG files."""
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    # קריאת התמונה בגווני אפור
+    # Step 1: Convert to BW
     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        raise ValueError(f"Failed to load image from {image_path}")
 
-    # עיבוד ראשוני - הפיכת רקע לשחור ואותיות ללבן
-    _, thresh = cv2.threshold(
-        img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
+    # Adaptive threshold for better handling of varying lighting
+    thresh = cv2.adaptiveThreshold(
+        img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2
     )
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    dilated = cv2.dilate(thresh, kernel, iterations=1)
-    clean = cv2.morphologyEx(dilated, cv2.MORPH_CLOSE, kernel, iterations=1)
 
-    # מציאת קונטורים
-    contours, _ = cv2.findContours(
-        clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-    )
+    # Morphological operations to clean noise and connect components
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    opened = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=1)
+    closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel, iterations=1)
+    bw_img = cv2.dilate(closed, kernel, iterations=1)
+
+    # Step 2: Find contours and bounding boxes
+    contours, _ = cv2.findContours(bw_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     boxes = [cv2.boundingRect(c) for c in contours]
 
-    # סינון רעשים קטנים
-    filtered = []
-    for x, y, w, h in boxes:
-        if w * h < 60:
+    # Filter small noise
+    min_area = 100  # Adjusted minimum area
+    filtered_boxes = [box for box in boxes if box[2] * box[3] >= min_area]
+
+    # Merge overlapping boxes
+    iou_threshold = 0.1
+    merged_boxes = []
+    used = [False] * len(filtered_boxes)
+    for i in range(len(filtered_boxes)):
+        if used[i]:
             continue
-        filtered.append([x, y, w, h])
+        current = list(filtered_boxes[i])
+        used[i] = True
+        for j in range(i + 1, len(filtered_boxes)):
+            if used[j]:
+                continue
+            other = filtered_boxes[j]
+            # Calculate IoU
+            xA = max(current[0], other[0])
+            yA = max(current[1], other[1])
+            xB = min(current[0] + current[2], other[0] + other[2])
+            yB = min(current[1] + current[3], other[1] + other[3])
+            interArea = max(0, xB - xA) * max(0, yB - yA)
+            boxAArea = current[2] * current[3]
+            boxBArea = other[2] * other[3]
+            iou = interArea / float(boxAArea + boxBArea - interArea + 1e-5)
 
-    # סידור לפי שורות
-    filtered.sort(key=lambda b: b[1])  # לפי Y
+            if iou > iou_threshold:
+                current[0] = min(current[0], other[0])
+                current[1] = min(current[1], other[1])
+                current[2] = max(current[0] + current[2], other[0] + other[2]) - current[0]
+                current[3] = max(current[1] + current[3], other[1] + other[3]) - current[1]
+                used[j] = True
+        merged_boxes.append(tuple(current))
+
+    # Calculate average height for row detection
+    avg_height = np.mean([box[3] for box in merged_boxes]) if merged_boxes else 50
+
+    # Step 3: Organize into rows (expect 7 rows)
+    merged_boxes.sort(key=lambda b: b[1])  # Sort by Y
     rows = []
-    row_threshold = 50
+    current_row = []
+    prev_y = merged_boxes[0][1]
+    for box in merged_boxes:
+        if abs(box[1] - prev_y) > avg_height * 0.5:  # New row if gap is large
+            if current_row:
+                rows.append(sorted(current_row, key=lambda b: -b[0]))  # Sort right to left
+            current_row = [box]
+        else:
+            current_row.append(box)
+        prev_y = box[1]
+    if current_row:
+        rows.append(sorted(current_row, key=lambda b: -b[0]))
+    if len(rows) != 7:
+        raise ValueError(f"Detected {len(rows)} rows instead of 7. Check image layout.")
 
-    for b in filtered:
-        x, y, w, h = b
-        placed = False
-        for row in rows:
-            if abs(row[0][1] - y) < row_threshold:
-                row.append(b)
-                placed = True
-                break
-        if not placed:
-            rows.append([b])
-
-    # סידור סופי - שורה ראשונה ראשונה, כל שורה מימין לשמאל
-    rows.sort(key=lambda r: r[0][1])
-    ordered = []
+    # Flatten rows into ordered list (right to left per row)
+    ordered_boxes = []
     for row in rows:
-        row.sort(key=lambda b: -b[0])
-        ordered.extend(row)
+        ordered_boxes.extend(row)
 
-    # שמות האותיות בעברית
+    # Ensure exactly 27 letters
+    if len(ordered_boxes) != 27:
+        raise ValueError(f"Detected {len(ordered_boxes)} letters instead of 27. Adjust detection parameters.")
+
+    # Hebrew letter names
     hebrew_letters = [
         'alef', 'bet', 'gimel', 'dalet', 'he', 'vav', 'zayin', 'het', 'tet',
         'yod', 'kaf', 'lamed', 'mem', 'nun', 'samekh', 'ayin', 'pe', 'tsadi',
-        'qof', 'resh', 'shin', 'tav',
-        'final_kaf', 'final_mem', 'final_nun', 'final_pe', 'final_tsadi'
+        'qof', 'resh', 'shin', 'tav', 'final_kaf', 'final_mem', 'final_nun',
+        'final_pe', 'final_tsadi'
     ]
 
-    saved = 0
-    inserted_vav = False
-    used_boxes = set()  # שמירת קונטורים שכבר נחתכו
-
-    for i, (x, y, w, h) in enumerate(ordered):
-        # דילוג אם כבר השתמשנו בבוקס הזה
-        if (x, y, w, h) in used_boxes:
-            continue
-        used_boxes.add((x, y, w, h))
-
-        # חישוב padding דינאמי רחב
-        pad_x = max(int(w * 1.0), 25)  # לפחות 25 פיקסלים רוחב
-        pad_y = max(int(h * 1.0), 25)  # לפחות 25 פיקסלים גובה
-
-        # חיתוך התמונה עם padding
+    # Step 4: Crop and save each letter
+    padding_ratio = 0.2  # 20% padding around each letter
+    for i, (x, y, w, h) in enumerate(ordered_boxes):
+        pad_x = int(w * padding_ratio)
+        pad_y = int(h * padding_ratio)
         x1 = max(x - pad_x, 0)
         y1 = max(y - pad_y, 0)
         x2 = min(x + w + pad_x, img.shape[1])
         y2 = min(y + h + pad_y, img.shape[0])
         crop = img[y1:y2, x1:x2]
 
-        # שם האות
-        if saved < len(hebrew_letters):
-            name = hebrew_letters[saved]
-        else:
-            name = f"letter_{saved}"
+        name = hebrew_letters[i]
+        output_path = os.path.join(output_dir, f"{i:02d}_{name}.png")
+        cv2.imwrite(output_path, crop)
+        print(f"Saved letter {name} to {output_path}")
 
-        # הכנסת האות ו אחרי האות ה (כמו שביקשת)
-        if name == 'zayin' and not inserted_vav:
-            vav_candidates = [
-                b for b in ordered
-                if b[2] < 20 and b[3] > 30 and b not in used_boxes
-            ]
-            if vav_candidates:
-                vx, vy, vw, vh = sorted(vav_candidates, key=lambda b: b[0])[-1]
-                used_boxes.add((vx, vy, vw, vh))
-                vx_pad_x = max(int(vw * 1.0), 25)
-                vx_pad_y = max(int(vh * 1.0), 25)
-                vx1 = max(vx - vx_pad_x, 0)
-                vy1 = max(vy - vx_pad_y, 0)
-                vx2 = min(vx + vw + vx_pad_x, img.shape[1])
-                vy2 = min(vy + vh + vx_pad_y, img.shape[0])
-                vav_crop = img[vy1:vy2, vx1:vx2]
-                vav_path = os.path.join(output_dir, f"{saved:02d}_vav.png")
-                cv2.imwrite(vav_path, vav_crop)
-                print(f"✅ הוזנה ידנית אות: vav")
-                saved += 1
-                inserted_vav = True
-
-        # שמירה
-        out_path = os.path.join(output_dir, f"{saved:02d}_{name}.png")
-        cv2.imwrite(out_path, crop)
-        print(f"✅ נשמרה אות {saved}: {name}")
-        saved += 1
-
-    print(f"\n✅ נחתכו ונשמרו {saved} אותיות בתיקייה:\n{output_dir}")
+    return len(hebrew_letters)
