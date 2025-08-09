@@ -44,6 +44,7 @@ def generate_ttf(svg_folder, output_ttf):
             else:
                 name = filename.replace(".svg", "")
 
+            # אם האות לא במפה - מדלגים עליה
             if name not in letter_map:
                 print(f"🔸 אות לא במפה: {name}")
                 continue
@@ -60,11 +61,11 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-            glyph.width = 350
 
-            # ✨ ריווח צמוד יותר בין אותיות
-            glyph.leftMargin = 6
-            glyph.rightMargin = 6
+            # הרחבת הרוחב והריווח בין אותיות
+            glyph.width = 600
+            glyph.leftMargin = 40
+            glyph.rightMargin = 40
 
             successful = False
             for path_element in paths:
@@ -113,8 +114,5 @@ def generate_ttf(svg_folder, output_ttf):
         print(f"\n🎉 הפונט נוצר בהצלחה בנתיב: {output_ttf}")
         return True
     except Exception as e:
-        print(f"❌ שגיאה בשמירת הפונט: {e}")
-        return False
-
         print(f"❌ שגיאה בשמירת הפונט: {e}")
         return False
