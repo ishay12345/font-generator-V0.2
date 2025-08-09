@@ -1,5 +1,6 @@
-import cv2, os
+import cv2
 import numpy as np
+import os
 from pathlib import Path
 
 def split_letters_from_image(image_path, output_dir):
@@ -9,123 +10,110 @@ def split_letters_from_image(image_path, output_dir):
     if img_gray is None:
         raise ValueError(f"Cannot load image: {image_path}")
 
-    # --- שלב 1: הכנה לשחור-לבן חד ---
+    # סף Otsu להפוך לבינארי (שחור-לבן)
     _, bw = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-    # ניקוי רעשים קטנים וחיבור רכיבים קרובים
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    bw = cv2.morphologyEx(bw, cv2.MORPH_CLOSE, kernel, iterations=2)
+    # ניקוי רעשים קטנים - אופציונלי (ניתן לשנות לפי הצורך)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
     bw = cv2.morphologyEx(bw, cv2.MORPH_OPEN, kernel, iterations=1)
 
-    # --- שלב 2: איתור קונטורים ---
-    contours, _ = cv2.findContours(bw, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    boxes = []
-    for c in contours:
-        x, y, w, h = cv2.boundingRect(c)
-        if w * h > 50:  # סינון רעשים קטנים
-            boxes.append((x, y, w, h))
+    # איתור רכיבים מחוברים
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bw, connectivity=8)
 
-    # --- שלב 3: סידור תיבות בשורות, מימין לשמאל ---
-    boxes = sorted(boxes, key=lambda b: (b[1], -b[0]))  # קודם לפי Y, אחר כך X הפוך
+    # stats columns: [left, top, width, height, area]
+    # נפסול רכיבים קטנים מדי
+    min_area = 50
+    letter_boxes = []
+    for i in range(1, num_labels):  # מתחילים ב-1 כי 0 זה הרקע
+        x, y, w, h, area = stats[i]
+        if area >= min_area:
+            letter_boxes.append((x, y, w, h))
 
-    # פונקציית הגדלה
-    def expand_box(box, pad_ratio_x=0.2, pad_ratio_y=0.2):
+    # פונקציה למיון תיבות לפי שורות, תוך התחשבות בשורות עם טולרנס גובה
+    def sort_boxes_hebrew(boxes, line_tol=15):
+        # מיון לפי Y תחילה
+        boxes = sorted(boxes, key=lambda b: b[1])
+        lines = []
+        current_line = []
+        current_y = -1000
+        for box in boxes:
+            x, y, w, h = box
+            if abs(y - current_y) > line_tol:
+                if current_line:
+                    lines.append(current_line)
+                current_line = [box]
+                current_y = y
+            else:
+                current_line.append(box)
+        if current_line:
+            lines.append(current_line)
+
+        # בתוך כל שורה מיון מימין לשמאל (X הפוך)
+        sorted_boxes = []
+        for line in lines:
+            line_sorted = sorted(line, key=lambda b: -b[0])
+            sorted_boxes.extend(line_sorted)
+        return sorted_boxes
+
+    letter_boxes = sort_boxes_hebrew(letter_boxes)
+
+    # הרחבה אחידה לתיבות, תוך שמירה על גבולות התמונה
+    def expand_box(box, pad_x=10, pad_y_top=15, pad_y_bottom=5):
         x, y, w, h = box
-        pad_x = int(w * pad_ratio_x)
-        pad_y = int(h * pad_ratio_y)
         nx = max(x - pad_x, 0)
-        ny = max(y - pad_y, 0)
-        nw = min(w + 2 * pad_x, img_gray.shape[1] - nx)
-        nh = min(h + 2 * pad_y, img_gray.shape[0] - ny)
+        ny = max(y - pad_y_top, 0)
+        nw = min(w + 2*pad_x, img_gray.shape[1] - nx)
+        nh = min(h + pad_y_top + pad_y_bottom, img_gray.shape[0] - ny)
         return (nx, ny, nw, nh)
 
-    # פונקציה לבדוק אם מסביב לתיבה יש לבן
-    def is_surrounded_by_white(x, y, w, h, img, margin=4):  # margin מוגדל ל-4 לפינות רחבות יותר
-        h_img, w_img = img.shape
-        top = max(y - margin, 0)
-        bottom = min(y + h + margin, h_img)
-        left = max(x - margin, 0)
-        right = min(x + w + margin, w_img)
+    expanded_boxes = [expand_box(b) for b in letter_boxes]
 
-        # קווי מסגרת
-        top_row = img[top, left:right]
-        bottom_row = img[bottom - 1, left:right]
-        left_col = img[top:bottom, left]
-        right_col = img[top:bottom, right - 1]
-
-        return np.all(top_row == 255) and np.all(bottom_row == 255) and \
-               np.all(left_col == 255) and np.all(right_col == 255)
-
-    # פונקציה להגדלת תיבה עד שיש מסגרת לבנה - הרחבה חזקה יותר למעלה
-    def expand_until_white_frame(x, y, w, h, img, max_expand=20):
-        for m in range(max_expand):
-            if is_surrounded_by_white(x, y, w, h, img, margin=4):
-                return (x, y, w, h)
-            # הרחבה לא סימטרית: למעלה יותר - מורידים y ומגדילים h בהתאם
-            y = max(y - 5, 0)  # מורידים y כדי להרחיב למעלה ב-3 פיקסלים בכל איטרציה
-            h = min(h + 5, img.shape[0] - y)  # מגדילים גובה ב-3 פיקסלים
-
-            # הרחבה בצדדים (שמאל וימין)
-            x = max(x - 2, 0)
-            w = min(w + 4, img.shape[1] - x)
-        return (x, y, w, h)
-
-
-    expanded_boxes = []
-    for (x, y, w, h) in boxes:
-        # התייחסות מיוחדת לאותיות צרות (ו, י, ן)
-        if w < h * 0.5:  # אות צרה
-            bx, by, bw_, bh_ = expand_box((x, y, w, h), pad_ratio_x=0.6, pad_ratio_y=0.25)
-        else:
-            bx, by, bw_, bh_ = expand_box((x, y, w, h), pad_ratio_x=0.25, pad_ratio_y=0.25)
-
-        # הרחבה עד שיש מסגרת לבנה (כעת עם הרחבה חזקה יותר למעלה)
-        bx, by, bw_, bh_ = expand_until_white_frame(bx, by, bw_, bh_, img_gray)
-        expanded_boxes.append((bx, by, bw_, bh_))
-
-    # --- שלב 4: מיזוג תיבות קרובות (טיפול מיוחד באות א) ---
-    def merge_close_boxes(boxes, min_dist=10):
+    # אם יש יותר מדי אותיות, אפשר למזג תיבות קרובות
+    def merge_close_boxes(boxes, max_dist=15):
         merged = []
-        used = [False] * len(boxes)
-        for i in range(len(boxes)):
+        used = [False]*len(boxes)
+        for i, b1 in enumerate(boxes):
             if used[i]:
                 continue
-            x1, y1, w1, h1 = boxes[i]
-            X1A, Y1A, X1B, Y1B = x1, y1, x1 + w1, y1 + h1
-            for j in range(i + 1, len(boxes)):
+            x1, y1, w1, h1 = b1
+            x1b, y1b = x1 + w1, y1 + h1
+            merged_box = b1
+            for j in range(i+1, len(boxes)):
                 if used[j]:
                     continue
                 x2, y2, w2, h2 = boxes[j]
-                X2A, Y2A, X2B, Y2B = x2, y2, x2 + w2, y2 + h2
-                # מיזוג אם קרובים בטווח ובגובה (כדי לאחד את שני חלקי האות א)
-                y_overlap = (min(Y1B, Y2B) - max(Y1A, Y2A)) > 0
-                x_dist = min(abs(X2A - X1B), abs(X1A - X2B))
-                height_diff = abs(h1 - h2)
-                if y_overlap and x_dist < min_dist and height_diff < 15:
-                    X1A = min(X1A, X2A)
-                    Y1A = min(Y1A, Y2A)
-                    X1B = max(X1B, X2B)
-                    Y1B = max(Y1B, Y2B)
+                x2b, y2b = x2 + w2, y2 + h2
+                # בדיקת מרחק אופקי קטן והצטלבות אנכית
+                horizontal_gap = max(x2 - x1b, x1 - x2b)
+                vertical_overlap = min(y1b, y2b) - max(y1, y2)
+                if horizontal_gap < max_dist and vertical_overlap > 0:
+                    # מיזוג
+                    nx = min(x1, x2)
+                    ny = min(y1, y2)
+                    nb = max(x1b, x2b)
+                    nh = max(y1b, y2b)
+                    merged_box = (nx, ny, nb - nx, nh - ny)
                     used[j] = True
-            merged.append((X1A, Y1A, X1B - X1A, Y1B - Y1A))
             used[i] = True
+            merged.append(merged_box)
         return merged
 
+    # מיזוג עד שמגיעים לפחות או בדיוק ל-27 תיבות (מספר האותיות העברי כולל סופיות)
     while len(expanded_boxes) > 27:
-        prev_count = len(expanded_boxes)
-        expanded_boxes = merge_close_boxes(expanded_boxes, min_dist=10)
-        if len(expanded_boxes) == prev_count:
-            break  # לא מתמזג יותר
+        prev_len = len(expanded_boxes)
+        expanded_boxes = merge_close_boxes(expanded_boxes)
+        if len(expanded_boxes) == prev_len:
+            break
 
-    # --- שלב 5: אם פחות מדי אותיות, להוסיף "ריבועים" ממוצעים כדי להגיע ל-27 ---
+    # הוספת ריבועים ממוצעים אם חסרות אותיות
     if len(expanded_boxes) < 27:
         avg_w = int(np.mean([b[2] for b in expanded_boxes])) if expanded_boxes else 50
         avg_h = int(np.mean([b[3] for b in expanded_boxes])) if expanded_boxes else 50
         while len(expanded_boxes) < 27:
             expanded_boxes.append((0, 0, avg_w, avg_h))
 
-    # --- שלב 6: מיון סופי — לפי שורות וסדר מימין לשמאל ---
-    expanded_boxes = sorted(expanded_boxes, key=lambda b: (b[1], -b[0]))
+    # מיון סופי
+    expanded_boxes = sort_boxes_hebrew(expanded_boxes)
 
     hebrew_letters = [
         'alef', 'bet', 'gimel', 'dalet', 'he', 'vav', 'zayin', 'het', 'tet',
@@ -134,7 +122,7 @@ def split_letters_from_image(image_path, output_dir):
         'final_pe', 'final_tsadi'
     ]
 
-    # --- שלב 7: חיתוך ושמירת כל האותיות ---
+    # חיתוך ושמירת האותיות
     for i, (x, y, w, h) in enumerate(expanded_boxes[:27]):
         crop = img_gray[y:y+h, x:x+w]
         name = hebrew_letters[i]
