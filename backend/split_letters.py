@@ -10,7 +10,6 @@ def split_letters_from_image(image_path, output_dir):
     if img_gray is None:
         raise ValueError(f"Cannot load image: {image_path}")
 
-    # סף Otsu להפוך לבינארי (שחור-לבן, הפוך)
     _, bw = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
@@ -18,7 +17,7 @@ def split_letters_from_image(image_path, output_dir):
 
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bw, connectivity=8)
 
-    min_area = 150  # סינון רעשים לפי שטח
+    min_area = 150
     letter_boxes = []
     for i in range(1, num_labels):
         x, y, w, h, area = stats[i]
@@ -107,16 +106,36 @@ def split_letters_from_image(image_path, output_dir):
         'final_pe', 'final_tsadi', 'final_tzadi'  # ץ אחרונה
     ]
 
-    # הורדה למטה בפיקסלים (שליליים = הורדה למטה)
+    # הורדה כוללת של כל האותיות
+    global_shift_down = -5  # הורדה כללית של 5 פיקסלים למטה
+
+    # הורדה ספציפית לאותיות ראשונות
+    first_letters_shift_down = {
+        'alef': -15,
+        'bet': -12,
+        'gimel': -12,
+        'dalet': -12,
+        'he': -10,
+    }
+
+    # הורדה ספציפית לאותיות מיוחדות נוספות
     letters_to_shift_down = {
-        'qof': -10, 
-        'final_kaf': -10, 
-        'final_nun': -10, 
-        'final_pe': -10, 
-        'final_tsadi': -10, 
-        'final_mem': -10, 
+        'qof': -10,
+        'final_kaf': -10,
+        'final_nun': -10,
+        'final_pe': -10,
+        'final_tsadi': -10,
+        'final_mem': -10,
         'final_tzadi': -10,
     }
+
+    # איחוד כל ההזזות - ספציפית/כללית
+    def get_shift_down(letter):
+        if letter in first_letters_shift_down:
+            return first_letters_shift_down[letter]
+        if letter in letters_to_shift_down:
+            return letters_to_shift_down[letter]
+        return global_shift_down
 
     # בדיקה האם התיבה הראשונה היא alef, אם לא - דילוג עליה
     if len(expanded_boxes) > 0:
@@ -130,7 +149,7 @@ def split_letters_from_image(image_path, output_dir):
     for i, (x, y, w, h) in enumerate(expanded_boxes[:27]):
         name = hebrew_letters[i]
 
-        shift_down_px = letters_to_shift_down.get(name, 0)
+        shift_down_px = get_shift_down(name)
 
         ny = y + shift_down_px
         if ny + h > img_gray.shape[0]:
