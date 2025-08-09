@@ -109,13 +109,13 @@ def split_letters_from_image(image_path, output_dir):
 
     # הורדה למטה בפיקסלים (הגדלתי לפי בקשה)
     letters_to_shift_down = {
-        'qof': -15,
-        'final_kaf': -15,
-        'final_nun': -15,
-        'final_pe': -15,
-        'final_tsadi': -15,
-        'final_mem': -15,
-        'final_tzadi': -15,
+        'qof': -25,
+        'final_kaf': -25,
+        'final_nun': -25,
+        'final_pe': -25,
+        'final_tsadi': -25,
+        'final_mem': -25,
+        'final_tzadi': -25,
     }
 
     # טיפול מיוחד לאות שלפני 'alef' (הניחוש שלי: זו 'vav' או 'final_nun')
