@@ -9,7 +9,6 @@ def split_letters_from_image(image_path, output_dir):
     if img_gray is None:
         raise ValueError(f"Cannot load image: {image_path}")
 
-
     # --- שלב 1: הכנה לשחור-לבן חד ---
     _, bw = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
@@ -41,7 +40,7 @@ def split_letters_from_image(image_path, output_dir):
         return (nx, ny, nw, nh)
 
     # פונקציה לבדוק אם מסביב לתיבה יש לבן
-    def is_surrounded_by_white(x, y, w, h, img, margin=2):
+    def is_surrounded_by_white(x, y, w, h, img, margin=4):  # margin מוגדל ל-4 לפינות רחבות יותר
         h_img, w_img = img.shape
         top = max(y - margin, 0)
         bottom = min(y + h + margin, h_img)
@@ -57,15 +56,15 @@ def split_letters_from_image(image_path, output_dir):
         return np.all(top_row == 255) and np.all(bottom_row == 255) and \
                np.all(left_col == 255) and np.all(right_col == 255)
 
-    # פונקציה להגדלת תיבה עד שיש מסגרת לבנה
-    def expand_until_white_frame(x, y, w, h, img, max_expand=10):
+    # פונקציה להגדלת תיבה עד שיש מסגרת לבנה - הרחבה חזקה יותר עם בדיקה רחבה יותר
+    def expand_until_white_frame(x, y, w, h, img, max_expand=20):
         for m in range(max_expand):
-            if is_surrounded_by_white(x, y, w, h, img):
+            if is_surrounded_by_white(x, y, w, h, img, margin=4):
                 return (x, y, w, h)
-            x = max(x - 1, 0)
-            y = max(y - 1, 0)
-            w = min(w + 2, img.shape[1] - x)
-            h = min(h + 2, img.shape[0] - y)
+            x = max(x - 2, 0)      # מורחב בשני פיקסלים לשמאל ומעלה כל פעם
+            y = max(y - 2, 0)
+            w = min(w + 4, img.shape[1] - x)  # מורחב בשני פיקסלים מכל צד רוחב
+            h = min(h + 4, img.shape[0] - y)  # מורחב בשני פיקסלים מכל צד גובה
         return (x, y, w, h)
 
     expanded_boxes = []
@@ -76,7 +75,7 @@ def split_letters_from_image(image_path, output_dir):
         else:
             bx, by, bw_, bh_ = expand_box((x, y, w, h), pad_ratio_x=0.25, pad_ratio_y=0.25)
 
-        # הרחבה עד שיש מסגרת לבנה
+        # הרחבה עד שיש מסגרת לבנה (כעת עם הרחבה חזקה יותר)
         bx, by, bw_, bh_ = expand_until_white_frame(bx, by, bw_, bh_, img_gray)
         expanded_boxes.append((bx, by, bw_, bh_))
 
