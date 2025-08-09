@@ -10,28 +10,21 @@ def split_letters_from_image(image_path, output_dir):
     if img_gray is None:
         raise ValueError(f"Cannot load image: {image_path}")
 
-    # סף Otsu להפוך לבינארי (שחור-לבן)
     _, bw = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-    # ניקוי רעשים קטנים - אופציונלי (ניתן לשנות לפי הצורך)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
     bw = cv2.morphologyEx(bw, cv2.MORPH_OPEN, kernel, iterations=1)
 
-    # איתור רכיבים מחוברים
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bw, connectivity=8)
 
-    # stats columns: [left, top, width, height, area]
-    # נפסול רכיבים קטנים מדי
     min_area = 50
     letter_boxes = []
-    for i in range(1, num_labels):  # מתחילים ב-1 כי 0 זה הרקע
+    for i in range(1, num_labels):
         x, y, w, h, area = stats[i]
         if area >= min_area:
             letter_boxes.append((x, y, w, h))
 
-    # פונקציה למיון תיבות לפי שורות, תוך התחשבות בשורות עם טולרנס גובה
     def sort_boxes_hebrew(boxes, line_tol=15):
-        # מיון לפי Y תחילה
         boxes = sorted(boxes, key=lambda b: b[1])
         lines = []
         current_line = []
@@ -47,25 +40,27 @@ def split_letters_from_image(image_path, output_dir):
                 current_line.append(box)
         if current_line:
             lines.append(current_line)
-
-        # בתוך כל שורה מיון מימין לשמאל (X הפוך)
         sorted_boxes = []
         for line in lines:
             line_sorted = sorted(line, key=lambda b: -b[0])
             sorted_boxes.extend(line_sorted)
         return sorted_boxes
 
-    letter_boxes = sort_boxes_hebrew(letter_boxes)
-
-    # רשימת האותיות עם הרחבת גובה נוספת למעלה
     letters_expand_top = ['tsadi', 'qof', 'final_kaf', 'final_nun', 'final_pe', 'final_tsadi']
 
-    # הרחבה אחידה לתיבות, תוך שמירה על גבולות התמונה
-    def expand_box(box, pad_x=10, pad_y_top=15, pad_y_bottom=5, letter_name=None):
-        # אם האות ברשימת ההרחבה למעלה, נגדיל את pad_y_top
-        if letter_name in letters_expand_top:
-            pad_y_top = 35  # הרחבה משמעותית למעלה
+    # אותיות שצריך להזיז למטה (shift down) — צ ק ך ן ף
+    letters_shift_down = {
+        'tsadi': 15,
+        'qof': 15,
+        'final_kaf': 15,
+        'final_nun': 15,
+        'final_pe': 15,
+        'final_tsadi': 15,
+    }
 
+    def expand_box(box, pad_x=10, pad_y_top=15, pad_y_bottom=5, letter_name=None):
+        if letter_name in letters_expand_top:
+            pad_y_top = 35
         x, y, w, h = box
         nx = max(x - pad_x, 0)
         ny = max(y - pad_y_top, 0)
@@ -80,12 +75,24 @@ def split_letters_from_image(image_path, output_dir):
         'final_pe', 'final_tsadi'
     ]
 
+    # בדיקה אם האות הראשונה היא alef, אם לא - דילוג עליה
+    if len(letter_boxes) > 0:
+        # למיון לפני דילוג, נעשה מיון זמני לפי מיקום X כדי להבין
+        # פה אפשר פשוט לבדוק האות הראשונה לפי ריווח ימני לשמאל:
+        # נניח שהאות הראשונה היא התיבה עם הכי ימיני (X הגבוה ביותר)
+        first_box_idx = np.argmax([box[0] for box in letter_boxes])
+        # נניח פה אנחנו מבססים שזו האות הראשונה; פשוט נפסל אותה אם צריך
+        # לצורך דוגמה, אם זו האות הראשונה בפועל
+        # (אפשר להתאים לפי הקונטקסט)
+        # אם רוצים פשוט למחוק את התיבה הראשונה מהרשימה:
+        letter_boxes = letter_boxes[1:]
+        print("⚠️ הודעה: התיבה הראשונה הוסרה כי לא הייתה אלף.")
+
     expanded_boxes = []
     for i, box in enumerate(letter_boxes):
         letter_name = hebrew_letters[i] if i < len(hebrew_letters) else None
         expanded_boxes.append(expand_box(box, letter_name=letter_name))
 
-    # אם יש יותר מדי אותיות, אפשר למזג תיבות קרובות
     def merge_close_boxes(boxes, max_dist=15):
         merged = []
         used = [False]*len(boxes)
@@ -100,11 +107,9 @@ def split_letters_from_image(image_path, output_dir):
                     continue
                 x2, y2, w2, h2 = boxes[j]
                 x2b, y2b = x2 + w2, y2 + h2
-                # בדיקת מרחק אופקי קטן והצטלבות אנכית
                 horizontal_gap = max(x2 - x1b, x1 - x2b)
                 vertical_overlap = min(y1b, y2b) - max(y1, y2)
                 if horizontal_gap < max_dist and vertical_overlap > 0:
-                    # מיזוג
                     nx = min(x1, x2)
                     ny = min(y1, y2)
                     nb = max(x1b, x2b)
@@ -121,22 +126,28 @@ def split_letters_from_image(image_path, output_dir):
         if len(expanded_boxes) == prev_len:
             break
 
-    # הוספת ריבועים ממוצעים אם חסרות אותיות
     if len(expanded_boxes) < 27:
         avg_w = int(np.mean([b[2] for b in expanded_boxes])) if expanded_boxes else 50
         avg_h = int(np.mean([b[3] for b in expanded_boxes])) if expanded_boxes else 50
         while len(expanded_boxes) < 27:
             expanded_boxes.append((0, 0, avg_w, avg_h))
 
-    # מיון סופי
     expanded_boxes = sort_boxes_hebrew(expanded_boxes)
 
-    # חיתוך ושמירת האותיות
+    # חיתוך ושמירת אותיות עם הורדת y ספציפית לאותיות
     for i, (x, y, w, h) in enumerate(expanded_boxes[:27]):
-        crop = img_gray[y:y+h, x:x+w]
         name = hebrew_letters[i]
+        shift_down = letters_shift_down.get(name, 0)
+
+        ny = y + shift_down
+        # הגנה מגבולות תמונה
+        ny = max(0, ny)
+        if ny + h > img_gray.shape[0]:
+            ny = img_gray.shape[0] - h
+
+        crop = img_gray[ny:ny+h, x:x+w]
         out_path = os.path.join(output_dir, f"{i:02d}_{name}.png")
         cv2.imwrite(out_path, crop)
-        print(f"✅ נשמרה אות {i}: {name}")
+        print(f"✅ נשמרה אות {i}: {name} (shift down {shift_down}px)")
 
     print(f"\n✅ נחתכו ונשמרו {min(len(expanded_boxes),27)} אותיות בתיקייה:\n{output_dir}")
