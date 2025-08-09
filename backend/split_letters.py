@@ -33,7 +33,7 @@ def split_letters_from_image(image_path, output_dir):
 
     # Merge overlapping boxes
     iou_threshold = 0.1
-    merged_boxes = []
+    merged = []
     used = [False] * len(filtered_boxes)
     for i in range(len(filtered_boxes)):
         if used[i]:
@@ -60,7 +60,8 @@ def split_letters_from_image(image_path, output_dir):
                 current[2] = max(current[0] + current[2], other[0] + other[2]) - current[0]
                 current[3] = max(current[1] + current[3], other[1] + other[3]) - current[1]
                 used[j] = True
-        merged_boxes.append(tuple(current))
+        merged.append(tuple(current))
+    merged_boxes = merged
 
     # Calculate average height for row detection
     avg_height = np.mean([box[3] for box in merged_boxes]) if merged_boxes else 50
@@ -70,8 +71,10 @@ def split_letters_from_image(image_path, output_dir):
     rows = []
     current_row = []
     prev_y = merged_boxes[0][1]
+    # Use a more flexible threshold for large letters
+    row_threshold = avg_height * 0.75  # Increased from 0.5 to handle large letters
     for box in merged_boxes:
-        if abs(box[1] - prev_y) > avg_height * 0.5:  # New row if gap is large
+        if abs(box[1] - prev_y) > row_threshold:
             if current_row:
                 rows.append(sorted(current_row, key=lambda b: -b[0]))  # Sort right to left
             current_row = [box]
@@ -80,8 +83,24 @@ def split_letters_from_image(image_path, output_dir):
         prev_y = box[1]
     if current_row:
         rows.append(sorted(current_row, key=lambda b: -b[0]))
+
+    # Merge rows if more than 7 are detected
+    while len(rows) > 7:
+        # Find the pair of rows with the smallest vertical gap
+        min_gap = float('inf')
+        merge_idx = 0
+        for i in range(len(rows) - 1):
+            gap = min([box[1] for box in rows[i + 1]]) - max([box[1] + box[3] for box in rows[i]])
+            if gap < min_gap:
+                min_gap = gap
+                merge_idx = i
+        # Merge the two closest rows
+        rows[merge_idx].extend(rows[merge_idx + 1])
+        rows[merge_idx] = sorted(rows[merge_idx], key=lambda b: -b[0])
+        del rows[merge_idx + 1]
+
     if len(rows) != 7:
-        raise ValueError(f"Detected {len(rows)} rows instead of 7. Check image layout.")
+        raise ValueError(f"Detected {len(rows)} rows instead of 7 after merging. Check image layout or adjust row_threshold.")
 
     # Flatten rows into ordered list (right to left per row)
     ordered_boxes = []
@@ -101,6 +120,7 @@ def split_letters_from_image(image_path, output_dir):
     ]
 
     # Step 4: Crop and save each letter
+    saved = 0
     padding_ratio = 0.2  # 20% padding around each letter
     for i, (x, y, w, h) in enumerate(ordered_boxes):
         pad_x = int(w * padding_ratio)
@@ -112,8 +132,11 @@ def split_letters_from_image(image_path, output_dir):
         crop = img[y1:y2, x1:x2]
 
         name = hebrew_letters[i]
-        output_path = os.path.join(output_dir, f"{i:02d}_{name}.png")
-        cv2.imwrite(output_path, crop)
-        print(f"Saved letter {name} to {output_path}")
+        out_path = os.path.join(output_dir, f"{saved:02d}_{name}.png")
+        cv2.imwrite(out_path, crop)
+        print(f"✅ נשמרה אות {saved}: {name}")
+        saved += 1
+
+    print(f"\n✅ נחתכו ונשמרו {saved} אותיות בתיקייה:\n{output_dir}")
 
     return len(hebrew_letters)
