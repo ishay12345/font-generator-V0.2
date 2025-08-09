@@ -20,12 +20,11 @@ def split_letters_from_image(image_path, output_dir):
     # איתור רכיבים מחוברים
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bw, connectivity=8)
 
-    min_area = 50
-    max_top_threshold = img_gray.shape[0] - 10
+    min_area = 120  # הגדלתי סינון רעשים כדי למנוע קווים קטנים
     letter_boxes = []
     for i in range(1, num_labels):
         x, y, w, h, area = stats[i]
-        if area >= min_area and y < max_top_threshold:
+        if area >= min_area:
             letter_boxes.append((x, y, w, h))
 
     def sort_boxes_hebrew(boxes, line_tol=15):
@@ -51,17 +50,6 @@ def split_letters_from_image(image_path, output_dir):
         return sorted_boxes
 
     letter_boxes = sort_boxes_hebrew(letter_boxes)
-
-    letters_to_shift_down = ['qof', 'kuf', 'final_kaf', 'final_nun', 'final_pe', 'final_tsadi', 'final_kaf', 'final_mem', 'final_nun', 'final_pe', 'final_tsadi']
-    # רשימת האותיות עם shift נמוך למטה, תוכל להוסיף או להסיר לפי הצורך
-    # חשוב שזו תהיה רשימה של האותיות הסופיות שממופים לסדר החיתוך
-
-    hebrew_letters = [
-        'alef', 'bet', 'gimel', 'dalet', 'he', 'vav', 'zayin', 'het', 'tet',
-        'yod', 'kaf', 'lamed', 'mem', 'nun', 'samekh', 'ayin', 'pe', 'tsadi',
-        'qof', 'resh', 'shin', 'tav', 'final_kaf', 'final_mem', 'final_nun',
-        'final_pe', 'final_tsadi', 'final_tsadi'  # ץ נוסף בתור final_tsadi האחרון
-    ]
 
     def expand_box(box, pad_x=10, pad_y_top=15, pad_y_bottom=15):
         x, y, w, h = box
@@ -114,14 +102,28 @@ def split_letters_from_image(image_path, output_dir):
 
     expanded_boxes = sort_boxes_hebrew(expanded_boxes)
 
-    # כאן - החיתוך עם הורדת y כדי להוריד את האות למטה בתמונה
+    hebrew_letters = [
+        'alef', 'bet', 'gimel', 'dalet', 'he', 'vav', 'zayin', 'het', 'tet',
+        'yod', 'kaf', 'lamed', 'mem', 'nun', 'samekh', 'ayin', 'pe', 'tsadi',
+        'qof', 'resh', 'shin', 'tav', 'final_kaf', 'final_mem', 'final_nun',
+        'final_pe', 'final_tsadi', 'final_tzadi'  # ץ אחרונה
+    ]
+
+    # האותיות שיש להן הזזה למטה (הורדת y בחיתוך)
+    letters_to_shift_down = ['qof', 'final_kaf', 'final_nun', 'final_pe', 'final_tsadi', 'final_mem', 'final_tzadi']
+
     for i, (x, y, w, h) in enumerate(expanded_boxes[:27]):
         name = hebrew_letters[i]
+
         shift_down_px = 0
-        if name in ['qof', 'final_kaf', 'final_nun', 'final_pe', 'final_tsadi', 'kuf', 'final_mem', 'final_tsadi']:
-            # הורדת האות למטה על ידי הורדת y (בלי לצאת מחוץ לתמונה)
-            shift_down_px = 10  # כמות הפיקסלים להוריד למטה, אפשר לשנות
-        ny = min(y + shift_down_px, img_gray.shape[0] - h)
+        if name in letters_to_shift_down:
+            shift_down_px = 12  # אפשר לשנות את כמות הפיקסלים לפי הצורך
+
+        # ודא שה-y החדש לא יחרוג מגבולות התמונה
+        ny = y + shift_down_px
+        if ny + h > img_gray.shape[0]:
+            ny = img_gray.shape[0] - h
+
         crop = img_gray[ny:ny+h, x:x+w]
         out_path = os.path.join(output_dir, f"{i:02d}_{name}.png")
         cv2.imwrite(out_path, crop)
