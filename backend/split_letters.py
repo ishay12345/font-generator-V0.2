@@ -17,11 +17,11 @@ def split_letters_from_image(image_path, output_dir):
 
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bw, connectivity=8)
 
-    min_area = 150
+    min_area = 120
     letter_boxes = []
     for i in range(1, num_labels):
         x, y, w, h, area = stats[i]
-        if area >= min_area and w > 10 and h > 10:
+        if area >= min_area:
             letter_boxes.append((x, y, w, h))
 
     def sort_boxes_hebrew(boxes, line_tol=15):
@@ -103,44 +103,47 @@ def split_letters_from_image(image_path, output_dir):
         'alef', 'bet', 'gimel', 'dalet', 'he', 'vav', 'zayin', 'het', 'tet',
         'yod', 'kaf', 'lamed', 'mem', 'nun', 'samekh', 'ayin', 'pe', 'tsadi',
         'qof', 'resh', 'shin', 'tav', 'final_kaf', 'final_mem', 'final_nun',
-        'final_pe', 'final_tsadi', 'final_tzadi'  # ץ אחרונה
+        'final_pe', 'final_tsadi', 'final_tzadi'
     ]
 
-    # רשימת האותיות להקטנה
-    letters_to_shrink = {'qof', 'kuf', 'final_kaf', 'final_nun', 'final_pe', 'final_tsadi', 'final_tzadi'}
+    # אותיות להזזה למטה
+    letters_to_shift_down = ['qof', 'final_kaf', 'final_nun', 'final_pe', 'final_tsadi', 'final_mem', 'final_tzadi']
 
-    # לצורך אחידות, הוספתי 'kuf' (ק) בשרש, אך ניתן להתאים
+    # אותיות להקטנה יחסית (כדי שייראו קטנות יותר בתוך המסגרת)
+    letters_to_shrink = ['qof', 'final_kaf', 'final_nun', 'final_pe', 'final_tsadi', 'final_mem', 'final_tzadi', 'tsadi']
 
-    # אחוז ההקטנה (0.8 = 80%)
-    shrink_scale = 0.8
+    shrink_scale = 0.75  # אחוז הקטנה (75%)
 
     for i, (x, y, w, h) in enumerate(expanded_boxes[:27]):
         name = hebrew_letters[i]
 
-        crop = img_gray[y:y+h, x:x+w]
+        shift_down_px = 0
+        if name in letters_to_shift_down:
+            shift_down_px = 12
 
+        ny = y + shift_down_px
+        if ny + h > img_gray.shape[0]:
+            ny = img_gray.shape[0] - h
+
+        crop = img_gray[ny:ny+h, x:x+w]
+
+        # אם האות שצריכה להקטן - נקטין אותה בתוך התיבה בלי לשנות את גודל התיבה
         if name in letters_to_shrink:
-            # שינוי גודל התמונה לאחוז קטן יותר, עם padding לבן סביב
             new_w = int(w * shrink_scale)
             new_h = int(h * shrink_scale)
 
-            # שרטוט מחדש של האות במרכז התמונה החדשה עם גודל מוקטן
             resized = cv2.resize(crop, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
-            # יצירת רקע לבן בגודל המקורי
             background = 255 * np.ones_like(crop)
 
-            # חישוב מיקום למרכז את האות
             start_x = (w - new_w) // 2
             start_y = (h - new_h) // 2
 
-            # הדבקת האות המוקטנת על הרקע הלבן
             background[start_y:start_y+new_h, start_x:start_x+new_w] = resized
-
             crop = background
 
         out_path = os.path.join(output_dir, f"{i:02d}_{name}.png")
         cv2.imwrite(out_path, crop)
-        print(f"✅ נשמרה אות {i}: {name}")
+        print(f"✅ נשמרה אות {i}: {name} (shift down {shift_down_px}px)")
 
     print(f"\n✅ נחתכו ונשמרו {min(len(expanded_boxes),27)} אותיות בתיקייה:\n{output_dir}")
