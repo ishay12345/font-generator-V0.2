@@ -62,8 +62,8 @@ def split_letters_from_image(image_path, output_dir):
             if is_surrounded_by_white(x, y, w, h, img, margin=4):
                 return (x, y, w, h)
             # הרחבה לא סימטרית: למעלה יותר - מורידים y ומגדילים h בהתאם
-            y = max(y - 4.5, 0)  # מורידים y כדי להרחיב למעלה ב-3 פיקסלים בכל איטרציה
-            h = min(h + 4.5, img.shape[0] - y)  # מגדילים גובה ב-3 פיקסלים
+            y = max(y - 5, 0)  # מורידים y כדי להרחיב למעלה ב-3 פיקסלים בכל איטרציה
+            h = min(h + 5, img.shape[0] - y)  # מגדילים גובה ב-3 פיקסלים
 
             # הרחבה בצדדים (שמאל וימין)
             x = max(x - 2, 0)
