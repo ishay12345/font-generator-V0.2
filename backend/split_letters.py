@@ -10,6 +10,7 @@ def split_letters_from_image(image_path, output_dir):
     if img_gray is None:
         raise ValueError(f"Cannot load image: {image_path}")
 
+    # סף Otsu להפוך לבינארי (שחור-לבן, הפוך)
     _, bw = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
@@ -17,11 +18,11 @@ def split_letters_from_image(image_path, output_dir):
 
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bw, connectivity=8)
 
-    min_area = 120
+    min_area = 150  # סינון רעשים לפי שטח
     letter_boxes = []
     for i in range(1, num_labels):
         x, y, w, h, area = stats[i]
-        if area >= min_area:
+        if area >= min_area and w > 10 and h > 10:
             letter_boxes.append((x, y, w, h))
 
     def sort_boxes_hebrew(boxes, line_tol=15):
@@ -103,45 +104,41 @@ def split_letters_from_image(image_path, output_dir):
         'alef', 'bet', 'gimel', 'dalet', 'he', 'vav', 'zayin', 'het', 'tet',
         'yod', 'kaf', 'lamed', 'mem', 'nun', 'samekh', 'ayin', 'pe', 'tsadi',
         'qof', 'resh', 'shin', 'tav', 'final_kaf', 'final_mem', 'final_nun',
-        'final_pe', 'final_tsadi', 'final_tzadi'
+        'final_pe', 'final_tsadi', 'final_tzadi'  # ץ אחרונה
     ]
 
-    # אותיות להזזה למטה
-    letters_to_shift_down = ['qof', 'final_kaf', 'final_nun', 'final_pe', 'final_tsadi', 'final_mem', 'final_tzadi']
+    # הורדה למטה בפיקסלים (שליליים = הורדה למטה)
+    letters_to_shift_down = {
+        'qof': -10, 
+        'final_kaf': -10, 
+        'final_nun': -10, 
+        'final_pe': -10, 
+        'final_tsadi': -10, 
+        'final_mem': -10, 
+        'final_tzadi': -10,
+    }
 
-    # אותיות להקטנה יחסית (כדי שייראו קטנות יותר בתוך המסגרת)
-    letters_to_shrink = ['qof', 'final_kaf', 'final_nun', 'final_pe', 'final_tsadi', 'final_mem', 'final_tzadi', 'tsadi']
-
-    shrink_scale = 0.75  # אחוז הקטנה (75%)
+    # בדיקה האם התיבה הראשונה היא alef, אם לא - דילוג עליה
+    if len(expanded_boxes) > 0:
+        # התיבה הראשונה אחרי מיון לפי אותיות
+        first_box_name = hebrew_letters[0]
+        if first_box_name != 'alef':
+            print(f"⚠️ התיבה הראשונה אינה alef אלא {first_box_name}, היא תדלג!")
+            expanded_boxes = expanded_boxes[1:]
+            hebrew_letters = hebrew_letters[1:]
 
     for i, (x, y, w, h) in enumerate(expanded_boxes[:27]):
         name = hebrew_letters[i]
 
-        shift_down_px = 0
-        if name in letters_to_shift_down:
-            shift_down_px = 12
+        shift_down_px = letters_to_shift_down.get(name, 0)
 
         ny = y + shift_down_px
         if ny + h > img_gray.shape[0]:
             ny = img_gray.shape[0] - h
+        if ny < 0:
+            ny = 0
 
         crop = img_gray[ny:ny+h, x:x+w]
-
-        # אם האות שצריכה להקטן - נקטין אותה בתוך התיבה בלי לשנות את גודל התיבה
-        if name in letters_to_shrink:
-            new_w = int(w * shrink_scale)
-            new_h = int(h * shrink_scale)
-
-            resized = cv2.resize(crop, (new_w, new_h), interpolation=cv2.INTER_AREA)
-
-            background = 255 * np.ones_like(crop)
-
-            start_x = (w - new_w) // 2
-            start_y = (h - new_h) // 2
-
-            background[start_y:start_y+new_h, start_x:start_x+new_w] = resized
-            crop = background
-
         out_path = os.path.join(output_dir, f"{i:02d}_{name}.png")
         cv2.imwrite(out_path, crop)
         print(f"✅ נשמרה אות {i}: {name} (shift down {shift_down_px}px)")
