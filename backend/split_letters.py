@@ -64,7 +64,7 @@ def split_letters_from_image(image_path, output_dir):
     def expand_box(box, pad_x=10, pad_y_top=15, pad_y_bottom=5, letter_name=None):
         # אם האות ברשימת ההרחבה למעלה, נגדיל את pad_y_top
         if letter_name in letters_expand_top:
-            pad_y_top = 35  # הרחבה משמעותית למעלה
+            pad_y_top = 40  # הרחבה משמעותית למעלה
 
         x, y, w, h = box
         nx = max(x - pad_x, 0)
