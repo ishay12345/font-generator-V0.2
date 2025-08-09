@@ -1,6 +1,6 @@
-    import cv2, os
-    import numpy as np
-    from pathlib import Path
+import cv2, os
+import numpy as np
+from pathlib import Path
 
 def split_letters_from_image(image_path, output_dir):
     Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -8,6 +8,7 @@ def split_letters_from_image(image_path, output_dir):
     img_gray = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     if img_gray is None:
         raise ValueError(f"Cannot load image: {image_path}")
+
 
     # --- שלב 1: הכנה לשחור-לבן חד ---
     _, bw = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
