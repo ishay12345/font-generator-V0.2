@@ -48,13 +48,13 @@ def split_letters_from_image(image_path, output_dir):
 
     letters_expand_top = ['tsadi', 'qof', 'final_kaf', 'final_nun', 'final_pe', 'final_tsadi']
 
-    # אותיות שצריך להזיז למטה (shift down) — צ ק ך ן ף
+    # מפת הורדת פיקסלים מדויקת לכל אות בנפרד
     letters_shift_down = {
-        'tsadi': 15,
+        'tsadi': 12,
         'qof': 15,
-        'final_kaf': 15,
-        'final_nun': 15,
-        'final_pe': 15,
+        'final_kaf': 10,
+        'final_nun': 13,
+        'final_pe': 12,
         'final_tsadi': 15,
     }
 
@@ -75,18 +75,11 @@ def split_letters_from_image(image_path, output_dir):
         'final_pe', 'final_tsadi'
     ]
 
-    # בדיקה אם האות הראשונה היא alef, אם לא - דילוג עליה
+    # הסרת התיבה הראשונה אם היא לא alef (כדי למנוע אות "ו/ן" מוזרה)
     if len(letter_boxes) > 0:
-        # למיון לפני דילוג, נעשה מיון זמני לפי מיקום X כדי להבין
-        # פה אפשר פשוט לבדוק האות הראשונה לפי ריווח ימני לשמאל:
-        # נניח שהאות הראשונה היא התיבה עם הכי ימיני (X הגבוה ביותר)
-        first_box_idx = np.argmax([box[0] for box in letter_boxes])
-        # נניח פה אנחנו מבססים שזו האות הראשונה; פשוט נפסל אותה אם צריך
-        # לצורך דוגמה, אם זו האות הראשונה בפועל
-        # (אפשר להתאים לפי הקונטקסט)
-        # אם רוצים פשוט למחוק את התיבה הראשונה מהרשימה:
         letter_boxes = letter_boxes[1:]
-        print("⚠️ הודעה: התיבה הראשונה הוסרה כי לא הייתה אלף.")
+        hebrew_letters = hebrew_letters[1:]
+        print("⚠️ התיבה הראשונה הוסרה כדי למנוע אות לא רצויה.")
 
     expanded_boxes = []
     for i, box in enumerate(letter_boxes):
@@ -134,13 +127,11 @@ def split_letters_from_image(image_path, output_dir):
 
     expanded_boxes = sort_boxes_hebrew(expanded_boxes)
 
-    # חיתוך ושמירת אותיות עם הורדת y ספציפית לאותיות
     for i, (x, y, w, h) in enumerate(expanded_boxes[:27]):
         name = hebrew_letters[i]
         shift_down = letters_shift_down.get(name, 0)
 
         ny = y + shift_down
-        # הגנה מגבולות תמונה
         ny = max(0, ny)
         if ny + h > img_gray.shape[0]:
             ny = img_gray.shape[0] - h
