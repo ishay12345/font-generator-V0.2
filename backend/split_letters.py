@@ -57,15 +57,19 @@ def split_letters_from_image(image_path, output_dir):
                np.all(left_col == 255) and np.all(right_col == 255)
 
     # פונקציה להגדלת תיבה עד שיש מסגרת לבנה - הרחבה חזקה יותר עם בדיקה רחבה יותר
-    def expand_until_white_frame(x, y, w, h, img, max_expand=20):
-        for m in range(max_expand):
-            if is_surrounded_by_white(x, y, w, h, img, margin=4):
-                return (x, y, w, h)
-            x = max(x - 2, 0)      # מורחב בשני פיקסלים לשמאל ומעלה כל פעם
-            y = max(y - 2, 0)
-            w = min(w + 4, img.shape[1] - x)  # מורחב בשני פיקסלים מכל צד רוחב
-            h = min(h + 4, img.shape[0] - y)  # מורחב בשני פיקסלים מכל צד גובה
-        return (x, y, w, h)
+def expand_until_white_frame(x, y, w, h, img, max_expand=20):
+    for m in range(max_expand):
+        if is_surrounded_by_white(x, y, w, h, img, margin=4):
+            return (x, y, w, h)
+        # הרחבה לא סימטרית: למעלה יותר - מורידים y ומגדילים h בהתאם
+        y = max(y - 3, 0)  # מורידים y כדי להרחיב למעלה ב-3 פיקסלים בכל איטרציה
+        h = min(h + 3, img.shape[0] - y)  # מגדילים גובה ב-3 פיקסלים
+
+        # הרחבה בצדדים (שמאל וימין) כפי שהיה
+        x = max(x - 2, 0)
+        w = min(w + 4, img.shape[1] - x)
+    return (x, y, w, h)
+
 
     expanded_boxes = []
     for (x, y, w, h) in boxes:
