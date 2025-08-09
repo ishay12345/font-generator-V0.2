@@ -17,11 +17,10 @@ def split_letters_from_image(image_path, output_dir):
 
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bw, connectivity=8)
 
-    min_area = 150  # הגבר סינון רעשים
+    min_area = 150
     letter_boxes = []
     for i in range(1, num_labels):
         x, y, w, h, area = stats[i]
-        # סינון רכיבים לא רלוונטיים (קטנים מדי או רוחב/גובה חשודים)
         if area >= min_area and w > 10 and h > 10:
             letter_boxes.append((x, y, w, h))
 
@@ -107,44 +106,41 @@ def split_letters_from_image(image_path, output_dir):
         'final_pe', 'final_tsadi', 'final_tzadi'  # ץ אחרונה
     ]
 
-    # הורדה למטה בפיקסלים (הגדלתי לפי בקשה)
-    letters_to_shift_down = {
-        'qof': -25,
-        'final_kaf': -25,
-        'final_nun': -25,
-        'final_pe': -25,
-        'final_tsadi': -25,
-        'final_mem': -25,
-        'final_tzadi': -25,
-    }
+    # רשימת האותיות להקטנה
+    letters_to_shrink = {'qof', 'kuf', 'final_kaf', 'final_nun', 'final_pe', 'final_tsadi', 'final_tzadi'}
 
-    # טיפול מיוחד לאות שלפני 'alef' (הניחוש שלי: זו 'vav' או 'final_nun')
-    # אם נמצא שהיא באינדקס 0 (לפני alef), פשוט נתעלם ממנה ולא נשמור
-    # או נוכל לדלג עליה בהתאם
+    # לצורך אחידות, הוספתי 'kuf' (ק) בשרש, אך ניתן להתאים
 
-    # נניח האות שלפני alef היא הראשונה אחרי מיון:
-    # נמחק את האות הראשונה אם היא לא 'alef'
-
-    # אז ראשית, נבדוק אם האות הראשונה היא alef, אם לא - נפסל אותה
-    if len(expanded_boxes) > 0:
-        first_box_name = hebrew_letters[0]
-        if first_box_name != 'alef':
-            print(f"⚠️ התיבה הראשונה אינה alef אלא {first_box_name}, היא תדלג!")
-            expanded_boxes = expanded_boxes[1:]
-            hebrew_letters = hebrew_letters[1:]
+    # אחוז ההקטנה (0.8 = 80%)
+    shrink_scale = 0.8
 
     for i, (x, y, w, h) in enumerate(expanded_boxes[:27]):
         name = hebrew_letters[i]
 
-        shift_down_px = letters_to_shift_down.get(name, 0)
+        crop = img_gray[y:y+h, x:x+w]
 
-        ny = y + shift_down_px
-        if ny + h > img_gray.shape[0]:
-            ny = img_gray.shape[0] - h
+        if name in letters_to_shrink:
+            # שינוי גודל התמונה לאחוז קטן יותר, עם padding לבן סביב
+            new_w = int(w * shrink_scale)
+            new_h = int(h * shrink_scale)
 
-        crop = img_gray[ny:ny+h, x:x+w]
+            # שרטוט מחדש של האות במרכז התמונה החדשה עם גודל מוקטן
+            resized = cv2.resize(crop, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+            # יצירת רקע לבן בגודל המקורי
+            background = 255 * np.ones_like(crop)
+
+            # חישוב מיקום למרכז את האות
+            start_x = (w - new_w) // 2
+            start_y = (h - new_h) // 2
+
+            # הדבקת האות המוקטנת על הרקע הלבן
+            background[start_y:start_y+new_h, start_x:start_x+new_w] = resized
+
+            crop = background
+
         out_path = os.path.join(output_dir, f"{i:02d}_{name}.png")
         cv2.imwrite(out_path, crop)
-        print(f"✅ נשמרה אות {i}: {name} (shift down {shift_down_px}px)")
+        print(f"✅ נשמרה אות {i}: {name}")
 
     print(f"\n✅ נחתכו ונשמרו {min(len(expanded_boxes),27)} אותיות בתיקייה:\n{output_dir}")
