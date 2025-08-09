@@ -57,8 +57,15 @@ def split_letters_from_image(image_path, output_dir):
 
     letter_boxes = sort_boxes_hebrew(letter_boxes)
 
+    # רשימת האותיות עם הרחבת גובה נוספת למעלה
+    letters_expand_top = ['tsadi', 'qof', 'final_kaf', 'final_nun', 'final_pe', 'final_tsadi']
+
     # הרחבה אחידה לתיבות, תוך שמירה על גבולות התמונה
-    def expand_box(box, pad_x=10, pad_y_top=15, pad_y_bottom=5):
+    def expand_box(box, pad_x=10, pad_y_top=15, pad_y_bottom=5, letter_name=None):
+        # אם האות ברשימת ההרחבה למעלה, נגדיל את pad_y_top
+        if letter_name in letters_expand_top:
+            pad_y_top = 35  # הרחבה משמעותית למעלה
+
         x, y, w, h = box
         nx = max(x - pad_x, 0)
         ny = max(y - pad_y_top, 0)
@@ -66,7 +73,17 @@ def split_letters_from_image(image_path, output_dir):
         nh = min(h + pad_y_top + pad_y_bottom, img_gray.shape[0] - ny)
         return (nx, ny, nw, nh)
 
-    expanded_boxes = [expand_box(b) for b in letter_boxes]
+    hebrew_letters = [
+        'alef', 'bet', 'gimel', 'dalet', 'he', 'vav', 'zayin', 'het', 'tet',
+        'yod', 'kaf', 'lamed', 'mem', 'nun', 'samekh', 'ayin', 'pe', 'tsadi',
+        'qof', 'resh', 'shin', 'tav', 'final_kaf', 'final_mem', 'final_nun',
+        'final_pe', 'final_tsadi'
+    ]
+
+    expanded_boxes = []
+    for i, box in enumerate(letter_boxes):
+        letter_name = hebrew_letters[i] if i < len(hebrew_letters) else None
+        expanded_boxes.append(expand_box(box, letter_name=letter_name))
 
     # אם יש יותר מדי אותיות, אפשר למזג תיבות קרובות
     def merge_close_boxes(boxes, max_dist=15):
@@ -98,7 +115,6 @@ def split_letters_from_image(image_path, output_dir):
             merged.append(merged_box)
         return merged
 
-    # מיזוג עד שמגיעים לפחות או בדיוק ל-27 תיבות (מספר האותיות העברי כולל סופיות)
     while len(expanded_boxes) > 27:
         prev_len = len(expanded_boxes)
         expanded_boxes = merge_close_boxes(expanded_boxes)
@@ -114,13 +130,6 @@ def split_letters_from_image(image_path, output_dir):
 
     # מיון סופי
     expanded_boxes = sort_boxes_hebrew(expanded_boxes)
-
-    hebrew_letters = [
-        'alef', 'bet', 'gimel', 'dalet', 'he', 'vav', 'zayin', 'het', 'tet',
-        'yod', 'kaf', 'lamed', 'mem', 'nun', 'samekh', 'ayin', 'pe', 'tsadi',
-        'qof', 'resh', 'shin', 'tav', 'final_kaf', 'final_mem', 'final_nun',
-        'final_pe', 'final_tsadi'
-    ]
 
     # חיתוך ושמירת האותיות
     for i, (x, y, w, h) in enumerate(expanded_boxes[:27]):
