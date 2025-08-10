@@ -2,7 +2,6 @@ import os
 from defcon import Font
 from ufo2ft import compileTTF
 from fontTools.svgLib.path import parse_path
-from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.misc.transform import Identity
 from xml.dom import minidom
@@ -19,15 +18,8 @@ letter_map = {
     "final_pe": 0x05E3, "final_tsadi": 0x05E5
 }
 
-# אותיות שצריך להקטין ולהוריד
-letters_to_scale = {
-    "tsadi": 120,
-    "qof": 120,
-    "final_kaf": 120,
-    "final_nun": 120,
-    "final_pe": 120,
-    "final_tsadi": 120
-}
+# אותיות בעייתיות שדורשות הורדה חזקה יותר
+special_letters = {"tsadi", "qof", "final_kaf", "final_nun", "final_pe", "final_tsadi"}
 
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
@@ -70,9 +62,9 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.unicode = unicode_val
             glyph.width = 350
 
-            # ✨ הרחבת מרווחים בין אותיות
-            glyph.leftMargin = 40
-            glyph.rightMargin = 40
+            # 📏 הרחבת מרווחים הרבה יותר
+            glyph.leftMargin = 100
+            glyph.rightMargin = 100
 
             successful = False
             for path_element in paths:
@@ -80,20 +72,13 @@ def generate_ttf(svg_folder, output_ttf):
                 if not d.strip():
                     continue
                 try:
-                    # טיפול באותיות שדורשות הקטנה והורדה משמעותית
-                    if name in letters_to_scale:
-                        scale_factor = 0.85  # הקטנה קלה
-                        translate_down = -letters_to_scale[name]  # הורדה חזקה
-                        transform = Identity.scale(scale_factor, scale_factor).translate(0, translate_down)
-                        pen = TransformPen(glyph.getPen(), transform)
-                    elif name == "yod":
-                        transform = Identity.translate(0, 120)  # הזזה למעלה ל-י'
-                        pen = TransformPen(glyph.getPen(), transform)
+                    # 📉 הורדה חזקה במיוחד
+                    if name in special_letters:
+                        transform = Identity.scale(0.85, 0.85).translate(0, -200)
                     else:
-                        # הורדה כללית לכל האותיות כדי שלא יהיו חתוכות למעלה
-                        transform = Identity.translate(0, -60)
-                        pen = TransformPen(glyph.getPen(), transform)
+                        transform = Identity.translate(0, -120)
 
+                    pen = TransformPen(glyph.getPen(), transform)
                     parse_path(d, pen)
                     successful = True
                 except Exception as e:
