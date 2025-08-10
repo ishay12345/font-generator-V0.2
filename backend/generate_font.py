@@ -90,13 +90,23 @@ def generate_ttf(svg_folder, output_ttf):
                     continue
                 try:
                     if name == "yod":
-                        transform = Identity.translate(0, 120)  # הזזה מעלה
+                        transform = Identity.translate(0, 200)  # הזזה מעלה
                     elif name == "qof":
                         transform = Identity.translate(0, -120)  # הורדה
                     elif name == "pe":
                         transform = Identity.translate(0, 200)  # הזזה מעלה
                     elif name == "lamed":
-                        transform = Identity.translate(0, 250)  # הורדה
+                        transform = Identity.translate(0, 100)  # הורדה
+                    elif name == "qof":
+                        transform = Identity.translate(0, -150)  # הורדה
+                    elif name == "tsadi":
+                        transform = Identity.translate(0, -150)  # הורדה
+                    elif name == "final_kaf":
+                        transform = Identity.translate(0, -150)  # הורדה
+                    elif name == "final_pe":
+                        transform = Identity.translate(0, -150)  # הורדה
+                    elif name == "final_tsadi":
+                        transform = Identity.translate(0, -150)  # הורדה        
                     else:
                         transform = Identity.translate(0, 0)  # ללא שינוי
 
