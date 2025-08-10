@@ -80,8 +80,8 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.width = 600
 
             # ✨ ריווח צמוד יותר בין אותיות
-            glyph.leftMargin = 40
-            glyph.rightMargin = 40
+            glyph.leftMargin = 50
+            glyph.rightMargin = 50
 
             successful = False
             for path_element in paths:
@@ -92,19 +92,19 @@ def generate_ttf(svg_folder, output_ttf):
                     if name == "yod":
                         transform = Identity.translate(0, 0)  # הזזה מעלה
                     elif name == "qof":
-                        transform = Identity.translate(0, -120)  # הורדה
+                        transform = Identity.translate(0, -200)  # הורדה
                     elif name == "pe":
                         transform = Identity.translate(0, -59)  # הזזה מעלה
                     elif name == "lamed":
-                        transform = Identity.translate(0, 280)  # הורדה
+                        transform = Identity.translate(0, 350)  # הורדה
                     elif name == "resh":
                         transform = Identity.translate(0, -170)  # הורדה
                     elif name == "final_kaf":
-                        transform = Identity.translate(0, -150)  # הורדה
+                        transform = Identity.translate(0, -250)  # הורדה
                     elif name == "final_pe":
-                        transform = Identity.translate(0, -180)  # הורדה
+                        transform = Identity.translate(0, -240)  # הורדה
                     elif name == "final_tsadi":
-                        transform = Identity.translate(0, -190)  # הורדה        
+                        transform = Identity.translate(0, -220)  # הורדה        
                     else:
                         transform = Identity.translate(0, 0)  # ללא שינוי
 
