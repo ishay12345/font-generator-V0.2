@@ -74,7 +74,7 @@ def generate_ttf(svg_folder, output_ttf):
                 try:
                     # 📉 הורדה חזקה במיוחד
                     if name in special_letters:
-                        transform = Identity.scale(0.85, 0.85).translate(0, -400)
+                        transform = Identity.scale(0.85, 0.85).translate(0, -450)
                     else:
                         transform = Identity.translate(0, -120)
 
