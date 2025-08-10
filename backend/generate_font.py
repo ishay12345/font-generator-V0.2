@@ -9,16 +9,24 @@ from xml.dom import minidom
 
 # מיפוי אותיות לעברית
 letter_map = {
-   "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
+    "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
     "he": 0x05D4, "vav": 0x05D5, "zayin": 0x05D6, "het": 0x05D7,
-    "tet": 0x05D8, "lamed": 0x05DB,   
-    "yod":  0x05DC,  
-    "kaf": 0x05D9,  
+    "tet": 0x05D8, "kaf": 0x05DB, "lamed": 0x05DC, "yod": 0x05D9,
     "mem": 0x05DE, "nun": 0x05E0, "samekh": 0x05E1, "ayin": 0x05E2,
     "pe": 0x05E4, "tsadi": 0x05E6, "qof": 0x05E7, "resh": 0x05E8,
     "shin": 0x05E9, "tav": 0x05EA,
     "final_kaf": 0x05DA, "final_mem": 0x05DD, "final_nun": 0x05DF,
     "final_pe": 0x05E3, "final_tsadi": 0x05E5
+}
+
+# אותיות שצריך להקטין
+letters_to_scale = {
+    "tsadi": 15,
+    "qof": 15,
+    "final_kaf": 15,
+    "final_nun": 15,
+    "final_pe": 15,
+    "final_tsadi": 15
 }
 
 def generate_ttf(svg_folder, output_ttf):
@@ -44,7 +52,6 @@ def generate_ttf(svg_folder, output_ttf):
             else:
                 name = filename.replace(".svg", "")
 
-            # אם האות לא במפה - מדלגים עליה
             if name not in letter_map:
                 print(f"🔸 אות לא במפה: {name}")
                 continue
@@ -61,11 +68,11 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
+            glyph.width = 350
 
-            # הרחבת הרוחב והריווח בין אותיות
-            glyph.width = 600
-            glyph.leftMargin = 40
-            glyph.rightMargin = 40
+            # ✨ ריווח צמוד בין אותיות
+            glyph.leftMargin = 6
+            glyph.rightMargin = 6
 
             successful = False
             for path_element in paths:
@@ -73,8 +80,14 @@ def generate_ttf(svg_folder, output_ttf):
                 if not d.strip():
                     continue
                 try:
-                    if name == "yod":
-                        transform = Identity.translate(0, 120)  # הזזה למעלה
+                    # טיפול באותיות שדורשות הקטנה
+                    if name in letters_to_scale:
+                        scale_factor = 0.85  # הקטנה
+                        translate_down = -letters_to_scale[name]  # הורדה למטה
+                        transform = Identity.scale(scale_factor, scale_factor).translate(0, translate_down)
+                        pen = TransformPen(glyph.getPen(), transform)
+                    elif name == "yod":
+                        transform = Identity.translate(0, 120)  # הזזה למעלה ל-י'
                         pen = TransformPen(glyph.getPen(), transform)
                     else:
                         pen = glyph.getPen()
@@ -97,6 +110,7 @@ def generate_ttf(svg_folder, output_ttf):
         except Exception as e:
             print(f"❌ שגיאה בעיבוד {filename}: {e}")
 
+    # דיווח על אותיות חסרות
     missing_letters = sorted(set(letter_map.keys()) - used_letters)
     if missing_letters:
         print("\n🔻 אותיות שלא נכנסו:")
@@ -107,6 +121,7 @@ def generate_ttf(svg_folder, output_ttf):
         print("❌ לא נוצרו גליפים כלל.")
         return False
 
+    # שמירת הפונט
     try:
         os.makedirs(os.path.dirname(output_ttf), exist_ok=True)
         ttf = compileTTF(font)
