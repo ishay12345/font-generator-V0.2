@@ -8,18 +8,17 @@ from xml.dom import minidom
 
 # מיפוי אותיות לעברית
 letter_map = {
-    "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
+   "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
     "he": 0x05D4, "vav": 0x05D5, "zayin": 0x05D6, "het": 0x05D7,
-    "tet": 0x05D8, "kaf": 0x05DB, "lamed": 0x05DC, "yod": 0x05D9,
+    "tet": 0x05D8, "lamed": 0x05DB,   
+    "yod":  0x05D9,   # תיקן כאן - י זה 05D9
+    "kaf": 0x05DB,    # תיקן כאן - כ זה 05DB
     "mem": 0x05DE, "nun": 0x05E0, "samekh": 0x05E1, "ayin": 0x05E2,
     "pe": 0x05E4, "tsadi": 0x05E6, "qof": 0x05E7, "resh": 0x05E8,
     "shin": 0x05E9, "tav": 0x05EA,
     "final_kaf": 0x05DA, "final_mem": 0x05DD, "final_nun": 0x05DF,
     "final_pe": 0x05E3, "final_tsadi": 0x05E5
 }
-
-# אותיות בעייתיות שדורשות הורדה חזקה יותר
-special_letters = {"tsadi", "qof", "final_kaf", "final_nun", "final_pe", "final_tsadi"}
 
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
@@ -62,7 +61,7 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.unicode = unicode_val
             glyph.width = 600
 
-            # 📏 הרחבת מרווחים הרבה יותר
+            # ✨ ריווח צמוד יותר בין אותיות
             glyph.leftMargin = 40
             glyph.rightMargin = 40
 
@@ -72,11 +71,16 @@ def generate_ttf(svg_folder, output_ttf):
                 if not d.strip():
                     continue
                 try:
-                    # 📉 הורדה חזקה במיוחד
-                    if name in special_letters:
-                        transform = Identity.scale(0.85, 0.85).translate(0, -450)
+                    if name == "yod":
+                        transform = Identity.translate(0, 120)  # הזזה מעלה
+                    elif name == "qof":
+                        transform = Identity.translate(0, -120)  # הורדה
+                    elif name == "pe":
+                        transform = Identity.translate(0, 200)  # הזזה מעלה
+                    elif name == "lamed":
+                        transform = Identity.translate(0, 250)  # הורדה
                     else:
-                        transform = Identity.translate(0, -120)
+                        transform = Identity.translate(0, 0)  # ללא שינוי
 
                     pen = TransformPen(glyph.getPen(), transform)
                     parse_path(d, pen)
@@ -97,7 +101,6 @@ def generate_ttf(svg_folder, output_ttf):
         except Exception as e:
             print(f"❌ שגיאה בעיבוד {filename}: {e}")
 
-    # דיווח על אותיות חסרות
     missing_letters = sorted(set(letter_map.keys()) - used_letters)
     if missing_letters:
         print("\n🔻 אותיות שלא נכנסו:")
@@ -108,7 +111,6 @@ def generate_ttf(svg_folder, output_ttf):
         print("❌ לא נוצרו גליפים כלל.")
         return False
 
-    # שמירת הפונט
     try:
         os.makedirs(os.path.dirname(output_ttf), exist_ok=True)
         ttf = compileTTF(font)
