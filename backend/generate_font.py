@@ -19,14 +19,14 @@ letter_map = {
     "final_pe": 0x05E3, "final_tsadi": 0x05E5
 }
 
-# אותיות שצריך להקטין
+# אותיות שצריך להקטין ולהוריד
 letters_to_scale = {
-    "tsadi": 15,
-    "qof": 15,
-    "final_kaf": 15,
-    "final_nun": 15,
-    "final_pe": 15,
-    "final_tsadi": 15
+    "tsadi": 120,
+    "qof": 120,
+    "final_kaf": 120,
+    "final_nun": 120,
+    "final_pe": 120,
+    "final_tsadi": 120
 }
 
 def generate_ttf(svg_folder, output_ttf):
@@ -70,9 +70,9 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.unicode = unicode_val
             glyph.width = 350
 
-            # ✨ ריווח צמוד בין אותיות
-            glyph.leftMargin = 6
-            glyph.rightMargin = 6
+            # ✨ הרחבת מרווחים בין אותיות
+            glyph.leftMargin = 40
+            glyph.rightMargin = 40
 
             successful = False
             for path_element in paths:
@@ -80,17 +80,19 @@ def generate_ttf(svg_folder, output_ttf):
                 if not d.strip():
                     continue
                 try:
-                    # טיפול באותיות שדורשות הקטנה
+                    # טיפול באותיות שדורשות הקטנה והורדה משמעותית
                     if name in letters_to_scale:
-                        scale_factor = 0.85  # הקטנה
-                        translate_down = -letters_to_scale[name]  # הורדה למטה
+                        scale_factor = 0.85  # הקטנה קלה
+                        translate_down = -letters_to_scale[name]  # הורדה חזקה
                         transform = Identity.scale(scale_factor, scale_factor).translate(0, translate_down)
                         pen = TransformPen(glyph.getPen(), transform)
                     elif name == "yod":
                         transform = Identity.translate(0, 120)  # הזזה למעלה ל-י'
                         pen = TransformPen(glyph.getPen(), transform)
                     else:
-                        pen = glyph.getPen()
+                        # הורדה כללית לכל האותיות כדי שלא יהיו חתוכות למעלה
+                        transform = Identity.translate(0, -60)
+                        pen = TransformPen(glyph.getPen(), transform)
 
                     parse_path(d, pen)
                     successful = True
