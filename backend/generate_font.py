@@ -60,11 +60,11 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-            glyph.width = 450
+            glyph.width = 600
 
             # 📏 הרחבת מרווחים הרבה יותר
-            glyph.leftMargin = 150
-            glyph.rightMargin = 150
+            glyph.leftMargin = 40
+            glyph.rightMargin = 40
 
             successful = False
             for path_element in paths:
@@ -74,7 +74,7 @@ def generate_ttf(svg_folder, output_ttf):
                 try:
                     # 📉 הורדה חזקה במיוחד
                     if name in special_letters:
-                        transform = Identity.scale(0.85, 0.85).translate(0, -270)
+                        transform = Identity.scale(0.85, 0.85).translate(0, -330)
                     else:
                         transform = Identity.translate(0, -120)
 
