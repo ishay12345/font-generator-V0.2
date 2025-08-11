@@ -1,457 +1,454 @@
-<!-- templates/index.html -->
-<!doctype html>
-<html lang="he">
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
 <head>
-  <meta charset="utf-8" />
-  <title>Handwriting → A4 Font Builder</title>
-
-  <!-- Cropper.js CDN -->
-  <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>יצירת פונט מכתב יד בעברית</title>
+  
   <style>
-    /* --- CSS מובנה (ארוך ויפה) --- */
-    :root {
-      --accent: #2a9d8f;
-      --muted: #666;
-      --bg: #fbfbfb;
-      --panel: #fff;
+    /* CSS מודרני ונקי, עם צבעים נעימים ונראות טובה */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      margin: 0; padding: 0;
+      display: flex; flex-direction: column; min-height: 100vh;
+      direction: rtl;
     }
-    body { font-family: Inter, "Segoe UI", Arial; background:var(--bg); margin:18px; color:#222; direction: rtl; }
-    header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; }
-    h1 { margin:0; font-size:20px; }
-    .grid { display:grid; grid-template-columns: 1fr 1.05fr; gap:14px; align-items:start; }
-    .panel { background:var(--panel); padding:12px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
-    .upload-area { text-align:center; padding:18px; border:2px dashed #e6e6e6; border-radius:8px; background:#fff; }
-    .big-btn { background:var(--accent); color:white; border:none; padding:12px 18px; border-radius:8px; cursor:pointer; font-weight:600; }
-    .muted { color:var(--muted); font-size:13px; }
-    .controls { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
-    #processedCanvas { width:100%; max-height:520px; border:1px solid #eee; display:block; }
-    .thumbs { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; min-height:80px; }
-    .thumb { width:108px; height:108px; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; background:#fafafa; border-radius:6px; position:relative; overflow:hidden; }
-    .thumb img { max-width:100%; max-height:100%; display:block; }
-    .thumb .lbl { position:absolute; left:6px; top:6px; background:rgba(0,0,0,0.55); color:#fff; padding:2px 6px; font-size:12px; border-radius:4px; }
-    .a4-wrap { text-align:center; }
-    #a4canvas { width:100%; border:1px solid #ccc; background:white; }
-    .footer { margin-top:12px; display:flex; gap:8px; align-items:center; justify-content:space-between; }
-    .small { font-size:13px; color:var(--muted); }
-    .btn-ghost { background:transparent; border:1px solid #ddd; padding:8px 10px; border-radius:8px; cursor:pointer; }
-    .danger { background:#e76f51; color:#fff; border:none; padding:8px 10px; border-radius:8px; }
-    .success { background:#2a9d8f; color:#fff; border:none; padding:8px 10px; border-radius:8px; }
-    .info { background:#2b7bed; color:#fff; border:none; padding:8px 10px; border-radius:8px; }
-    .note { background:#fff5d6; padding:8px; border-radius:6px; border:1px solid #f0e1a0; margin-top:8px; }
-    .topline { display:flex; gap:8px; align-items:center; justify-content:space-between; }
-    .help { font-size:13px; color:#444; }
+    header {
+      background-color: #2c3e50;
+      color: white;
+      padding: 1.2rem;
+      text-align: center;
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    main {
+      flex-grow: 1;
+      padding: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .upload-section {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.1);
+      display: flex; flex-direction: column; gap: 10px;
+      align-items: center;
+    }
+    .upload-section label {
+      background-color: #3498db;
+      color: white;
+      padding: 10px 25px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.3s ease;
+      user-select: none;
+    }
+    .upload-section label:hover {
+      background-color: #2980b9;
+    }
+    .upload-section input[type="file"] {
+      display: none;
+    }
+    #uploaded-image, #processed-image {
+      max-width: 90%;
+      max-height: 300px;
+      border: 2px solid #3498db;
+      border-radius: 8px;
+      margin-top: 10px;
+      background: #ecf0f1;
+      object-fit: contain;
+    }
+    
+    .glyphs-area {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.1);
+      display: grid;
+      grid-template-columns: repeat(auto-fit,minmax(140px,1fr));
+      gap: 15px;
+      justify-items: center;
+      overflow-y: auto;
+      max-height: 480px;
+    }
+    .glyph-card {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 12px;
+      width: 140px;
+      background: #fafafa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      user-select: none;
+    }
+    .glyph-card img {
+      max-width: 100%;
+      max-height: 100px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      background: white;
+      object-fit: contain;
+    }
+    .glyph-card button {
+      background-color: #27ae60;
+      border: none;
+      color: white;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      width: 100%;
+    }
+    .glyph-card button:hover {
+      background-color: #219150;
+    }
+    
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 15px;
+    }
+    .actions button {
+      background-color: #2980b9;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      font-size: 1.1rem;
+      user-select: none;
+    }
+    .actions button:disabled {
+      background-color: #7f8c8d;
+      cursor: not-allowed;
+    }
+    .actions button:hover:not(:disabled) {
+      background-color: #1c5980;
+    }
+    .status-message {
+      text-align: center;
+      font-weight: 600;
+      color: #c0392b;
+      min-height: 1.5em;
+      margin-top: 10px;
+    }
+    footer {
+      background: #2c3e50;
+      color: white;
+      padding: 12px;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    /* קרופינג - ריבועים למשבצות */
+    .crop-grid {
+      margin-top: 20px;
+      background: white;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.1);
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-template-rows: repeat(4, 140px);
+      gap: 6px;
+      position: relative;
+      user-select: none;
+    }
+    .crop-cell {
+      border: 2px dashed #3498db;
+      border-radius: 6px;
+      background: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .crop-cell img {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+      pointer-events: none;
+      user-select: none;
+    }
+    .crop-cell .placeholder {
+      color: #7f8c8d;
+      font-size: 0.95rem;
+      font-weight: 600;
+      pointer-events: none;
+      user-select: none;
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>ממכתב־יד לפונט — עורך חיתוך ו-A4</h1>
-    <div class="topline">
-      <div class="small">שלב: חתוך והצב את האותיות בתבנית</div>
-      <div><button id="downloadAll" class="btn-ghost">הורד A4 PNG</button></div>
-    </div>
+    המרת כתב יד לפונט עברי מותאם
   </header>
 
-  <div class="grid">
-    <!-- LEFT: upload & image & crop -->
-    <div class="panel">
-      <div class="upload-area">
-        <div style="font-size:18px;font-weight:700;margin-bottom:6px;">העלה תמונה של דף הכתב־יד</div>
-        <div class="muted">סרוק/צלם את דף האותיות והעלה כאן (JPEG/PNG)</div>
-        <div style="margin-top:12px;">
-          <input type="file" id="fileInput" accept="image/*"/>
-        </div>
-        <div class="note" style="margin-top:12px;">
-          המערכת תתמיר לשחור־לבן באופן אוטומטי - זה ישפר את הנראות ויקל על החיתוך.
-        </div>
-      </div>
+  <main>
+    <section class="upload-section" aria-label="העלאת תמונה">
+      <label for="file-upload">בחר קובץ תמונה להעלאה</label>
+      <input type="file" id="file-upload" accept="image/*" />
+      <img id="uploaded-image" alt="תמונה שהועלתה" style="display:none; margin-top:10px;" />
+      <img id="processed-image" alt="תמונה מעובדת שחור-לבן" style="display:none; margin-top:10px;" />
+      <div class="status-message" id="upload-status"></div>
+    </section>
 
-      <div style="margin-top:12px;">
-        <div class="controls">
-          <button id="btnProcess" class="big-btn" disabled>עיבוד לשחור-לבן</button>
-          <button id="btnCropAdd" class="btn-ghost" disabled>חתוך והוסף לתצוגה</button>
-          <button id="btnUndoThumb" class="btn-ghost" disabled>בטל חיתוך אחרון</button>
-          <button id="btnClearThumbs" class="btn-ghost" disabled>נקה חיתוכים</button>
-        </div>
-        <div style="margin-top:10px;">
-          <canvas id="processedCanvas" style="display:none;"></canvas>
-        </div>
+    <section aria-label="אותיות חתוכות" class="glyphs-area" id="glyphs-area" style="display:none;">
+      <!-- כרטיסיות אותיות יתווספו כאן -->
+    </section>
 
-        <div style="margin-top:12px;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-weight:600">תצוגת חיתוכים</div>
-            <div class="small">הקלק על חיתוך כדי לבחור משבצת (או גרור)</div>
-          </div>
-          <div id="thumbs" class="thumbs"></div>
-        </div>
-      </div>
+    <section aria-label="משבצות אותיות A4" class="crop-grid" id="crop-grid" style="display:none;">
+      <!-- 28 משבצות אותיות עבריות (4 שורות × 7 עמודות) -->
+    </section>
+
+    <div class="actions">
+      <button id="btn-generate" disabled>צור פונט TTF</button>
+      <button id="btn-download" style="display:none;">הורד פונט</button>
     </div>
+    
+    <div class="status-message" id="final-status"></div>
+  </main>
 
-    <!-- RIGHT: A4 Grid -->
-    <div class="panel a4-wrap">
-      <h3 style="margin-top:0;margin-bottom:6px;">דף A4 — משבצות (רגיל: A4 @300dpi)</h3>
-      <div class="muted">גרור כל חיתוך לתיבה הנכונה או לחץ על חיתוך כדי לבחור משבצת вручную.</div>
-      <div style="margin-top:10px;">
-        <canvas id="a4canvas" width="2480" height="3508"></canvas>
-      </div>
-
-      <div class="footer">
-        <div style="display:flex; gap:8px">
-          <button id="btnSaveGlyphs" class="success">שמור חיתוכים לשרת</button>
-          <button id="btnFinalize" class="info" disabled>צור פונט (Finalize)</button>
-          <button id="btnDownloadFont" class="btn-ghost" disabled>הורד פונט</button>
-        </div>
-        <div style="text-align:left;">
-          <div id="status" class="small">מוכן</div>
-        </div>
-      </div>
-
-      <div style="margin-top:10px;" class="help">
-        טיפ: השתמש בזום בחלון השמאלי כדי למקם בדיוק. אחרי שמירת כל החיתוכים — לחץ "צור פונט".
-      </div>
-    </div>
-  </div>
+  <footer>
+    © כל הזכויות שמורות © 2025
+  </footer>
 
   <script>
-  // --- JS מוטמע (ארוך) ---
-  // גרסה פשוטה אך מלאה: upload -> processed preview -> Cropper.js לחיתוך -> thumbnails -> A4 canvas grid -> שמירה לשרת -> finalize
-  (function(){
-    const fileInput = document.getElementById('fileInput');
-    const btnProcess = document.getElementById('btnProcess');
-    const processedCanvas = document.getElementById('processedCanvas');
-    const ctxProc = processedCanvas.getContext('2d');
-    const thumbs = document.getElementById('thumbs');
-    const btnCropAdd = document.getElementById('btnCropAdd');
-    const btnUndoThumb = document.getElementById('btnUndoThumb');
-    const btnClearThumbs = document.getElementById('btnClearThumbs');
-    const a4canvas = document.getElementById('a4canvas');
-    const ctxA4 = a4canvas.getContext('2d');
-    const btnSaveGlyphs = document.getElementById('btnSaveGlyphs');
-    const btnFinalize = document.getElementById('btnFinalize');
-    const btnDownloadFont = document.getElementById('btnDownloadFont');
-    const status = document.getElementById('status');
-    const downloadAll = document.getElementById('downloadAll');
-
-    let uploadedData = null;
-    let procDataUrl = null;
-    let cropper = null;
-    let thumbnailsList = []; // {dataUrl, name?}
-    let placed = {}; // index -> {img}
-
-    // סדר המשבצות (grid order) לפי ההגדרה שלך - 27 שמות
-    const gridOrder = [
-     'alef','gimel','dalet','bet','he','vav','zayin','het',
-     'kaf','lamed','tet','yod','nun','ayin','mem','samekh',
-     'tsadi','resh','pe','qof','shin','tav','final_kaf','final_mem',
-     'final_nun','final_pe','final_tsadi'
+    // סדר האותיות לפי הפונט שלך, 28 אותיות כולל סופיות
+    const lettersOrder = [
+      "alef","gimel","dalet","bet",
+      "he","vav","zayin","het",
+      "kaf","lamed","tet","yod","nun","ayin","mem","samekh","tsadi","resh",
+      "pe","qof","shin","tav",
+      "final_kaf","final_mem","final_nun","final_pe","final_tsadi"
     ];
 
-    // בנה משבצות בדף A4 (7 rows x 4 cols = 28 תיבות, נשתמש ב-27 הראשונות)
-    const rows = 7, cols = 4;
-    const margin = 120;
-    const usableW = a4canvas.width - margin*2;
-    const usableH = a4canvas.height - margin*2;
-    const cellW = Math.floor(usableW / cols);
-    const cellH = Math.floor(usableH / rows);
-    const cells = [];
-    let idx = 0;
-    for (let r=0;r<rows;r++){
-      for (let c=0;c<cols;c++){
-        const x = margin + c*cellW;
-        const y = margin + r*cellH;
-        cells.push({x,y,w:cellW,h:cellH, index: idx});
-        idx++;
+    const cropGrid = document.getElementById('crop-grid');
+    const glyphsArea = document.getElementById('glyphs-area');
+    const uploadInput = document.getElementById('file-upload');
+    const uploadedImg = document.getElementById('uploaded-image');
+    const processedImg = document.getElementById('processed-image');
+    const uploadStatus = document.getElementById('upload-status');
+    const btnGenerate = document.getElementById('btn-generate');
+    const btnDownload = document.getElementById('btn-download');
+    const finalStatus = document.getElementById('final-status');
+
+    // יוצר את המשבצות ריקות עם שמות אותיות
+    function createCropGrid() {
+      cropGrid.innerHTML = '';
+      for(let i=0; i<lettersOrder.length; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('crop-cell');
+        cell.dataset.letter = lettersOrder[i];
+        cell.dataset.index = i;
+
+        const placeholder = document.createElement('div');
+        placeholder.classList.add('placeholder');
+        placeholder.textContent = lettersOrder[i];
+        cell.appendChild(placeholder);
+
+        // לאפשר טיפה drag & drop עתידי (אפשר להרחיב)
+        cropGrid.appendChild(cell);
       }
     }
 
-    function drawA4(){
-      ctxA4.fillStyle = '#fff';
-      ctxA4.fillRect(0,0,a4canvas.width,a4canvas.height);
-      ctxA4.strokeStyle = '#bbb';
-      ctxA4.lineWidth = 2;
-      ctxA4.font = "24px Arial";
-      ctxA4.fillStyle = '#333';
-      for (let i=0;i<cells.length;i++){
-        const cell = cells[i];
-        ctxA4.strokeRect(cell.x, cell.y, cell.w, cell.h);
-        if (i < gridOrder.length) {
-          ctxA4.fillText(gridOrder[i], cell.x+8, cell.y+28);
-        }
-      }
-      // draw placed glyphs
-      for (const key in placed){
-        const p = placed[key];
-        const cell = cells[key];
-        if (!cell) continue;
-        const img = p.img;
-        const maxW = cell.w - 20, maxH = cell.h - 20;
-        const ratio = Math.min(maxW/img.width, maxH/img.height, 1);
-        const w = Math.round(img.width * ratio), h = Math.round(img.height * ratio);
-        const dx = cell.x + Math.round((cell.w - w)/2);
-        const dy = cell.y + Math.round((cell.h - h)/2);
-        ctxA4.drawImage(img, dx, dy, w, h);
-        ctxA4.strokeStyle = '#2a9d8f';
-        ctxA4.lineWidth = 3;
-        ctxA4.strokeRect(cell.x+2, cell.y+2, cell.w-4, cell.h-4);
-      }
-    }
-    drawA4();
+    createCropGrid();
 
-    // העלאה
-    fileInput.addEventListener('change', () => {
-      const f = fileInput.files[0];
-      if (!f) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        uploadedData = reader.result;
-        btnProcess.disabled = false;
-        status.innerText = "קובץ מוכן לעיבוד — לחץ 'עיבוד לשחור-לבן'";
-      };
-      reader.readAsDataURL(f);
-    });
+    // העלאת תמונה לשרת, קבלת התמונה המעובדת והשוואה
+    uploadInput.addEventListener('change', async (e) => {
+      uploadStatus.textContent = '';
+      finalStatus.textContent = '';
+      btnGenerate.disabled = true;
+      btnDownload.style.display = 'none';
+      glyphsArea.style.display = 'none';
+      cropGrid.style.display = 'none';
+      processedImg.style.display = 'none';
+      uploadedImg.style.display = 'none';
 
-    // שלח לשרת לעיבוד BW
-    btnProcess.addEventListener('click', async () => {
-      if (!uploadedData) return alert("בחר קובץ קודם");
-      status.innerText = "שולח ועיבוד לשחור־לבן...";
-      btnProcess.disabled = true;
-      const blob = await (await fetch(uploadedData)).blob();
-      const fd = new FormData();
-      fd.append('file', blob, 'upload.png');
+      const file = e.target.files[0];
+      if (!file) return;
+
+      uploadedImg.src = URL.createObjectURL(file);
+      uploadedImg.style.display = 'block';
+
+      uploadStatus.textContent = 'מעלה ומעבד תמונה...';
+
       try {
-        const res = await fetch('/api/upload', { method:'POST', body:fd });
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
         const json = await res.json();
-        if (json.error) { alert("שגיאה: " + json.error); status.innerText = "שגיאה"; return; }
-        procDataUrl = json.processed_b64;
-        // הצג ב-canvas
-        const img = new Image();
-        img.onload = () => {
-          processedCanvas.width = img.width;
-          processedCanvas.height = img.height;
-          processedCanvas.style.display = 'block';
-          ctxProc.clearRect(0,0,processedCanvas.width, processedCanvas.height);
-          ctxProc.drawImage(img,0,0);
-          // צור cropper על ה-canvas באמצעות קנבס ביניים
-          if (cropper) {
-            cropper.destroy();
-            cropper = null;
-          }
-          // Cropper עובד על image או canvas — נשתמש ב־processedCanvas's image source
-          // לכן ניצור תמונה סמויה
-          const hiddenImg = new Image();
-          hiddenImg.src = procDataUrl;
-          hiddenImg.onload = () => {
-            // we create an offscreen image DOM and attach cropper to it (invisible)
-            const imgEl = document.createElement('img');
-            imgEl.src = procDataUrl;
-            imgEl.style.display = 'none';
-            document.body.appendChild(imgEl);
-            cropper = new Cropper(imgEl, {
-              viewMode:1,
-              dragMode:'move',
-              autoCropArea:0.12,
-              responsive:true,
-              background:false,
-              movable:true,
-              zoomable:true,
-              ready() {
-                // nothing
-              }
-            });
-            btnCropAdd.disabled = false;
-            btnClearThumbs.disabled = false;
-            status.innerText = "עיבוד הושלם — חתוך אות והוסף";
-          };
-        };
-        img.src = procDataUrl;
-      } catch (e) {
-        alert("שגיאה בשרת: "+e);
-        status.innerText = "שגיאה בשרת";
+        if(json.error){
+          uploadStatus.textContent = "שגיאה בהעלאה: " + json.error;
+          return;
+        }
+
+        processedImg.src = json.processed_b64;
+        processedImg.style.display = 'block';
+        uploadStatus.textContent = 'התמונה עובדה בהצלחה!';
+
+        // TODO: כאן תוכל לקרוא פונקציית חיתוך (או להציג חיתוך ידני)
+        // בשביל הדוגמה פשוט נטען את התמונה המעובדת ונראה אותיות בממשק
+        await loadGlyphs();
+
+      } catch(e){
+        uploadStatus.textContent = 'שגיאה: ' + e.message;
       }
     });
 
-    // הוספת חיתוך לתצוגת החיתוכים
-    btnCropAdd.addEventListener('click', () => {
-      if (!cropper) return alert("אין cropper פעיל");
-      const c = cropper.getCroppedCanvas({ fillColor:'#ffffff' });
-      const dataUrl = c.toDataURL('image/png');
-      thumbnailsList.push({ dataUrl });
-      renderThumbs();
-      btnUndoThumb.disabled = false;
-      btnCropAdd.disabled = false;
-      status.innerText = "חיתוך נוסף. בחר משבצת או גרור אותו ל־A4.";
-    });
+    // פונקציה מדומה לטעינת אותיות (משרת שמירת החיתוכים)
+    async function loadGlyphs() {
+      glyphsArea.innerHTML = '';
+      glyphsArea.style.display = 'flex';
 
-    btnUndoThumb.addEventListener('click', () => {
-      thumbnailsList.pop();
-      renderThumbs();
-      if (thumbnailsList.length === 0) btnUndoThumb.disabled = true;
-    });
-    btnClearThumbs.addEventListener('click', () => {
-      if (!confirm("למחוק את כל החיתוכים?")) return;
-      thumbnailsList = [];
-      renderThumbs();
-      btnUndoThumb.disabled = true;
-      btnClearThumbs.disabled = true;
-    });
-
-    function renderThumbs(){
-      thumbs.innerHTML = '';
-      thumbnailsList.forEach((t, i) => {
-        const div = document.createElement('div'); div.className = 'thumb';
-        const img = document.createElement('img'); img.src = t.dataUrl;
-        div.appendChild(img);
-        const lbl = document.createElement('div'); lbl.className='lbl'; lbl.innerText = i+1;
-        div.appendChild(lbl);
-        // click handler: assign to a cell
-        div.addEventListener('click', async () => {
-          const choice = prompt("הכנס מספר משבצת (1..27) או שם אות (alef, bet, ...). השאר ריק למיקום אוטומטי:");
-          let index = null;
-          if (choice) {
-            const n = parseInt(choice);
-            if (!isNaN(n) && n>=1 && n<=27) index = n-1;
-            else {
-              const ni = gridOrder.indexOf(choice);
-              if (ni >= 0) index = ni;
-            }
-          }
-          if (index === null) {
-            // first empty
-            for (let k=0;k<gridOrder.length;k++){ if (!(k in placed)) { index=k; break; } }
-          }
-          if (index === undefined || index === null) { alert("לא נבחרה משבצת"); return; }
-          // place image
-          const im = new Image();
-          im.onload = () => { placed[index] = { img: im }; drawA4(); };
-          im.src = t.dataUrl;
-        });
-        // drag support: start drag with dataUrl payload
-        div.draggable = true;
-        div.addEventListener('dragstart', (ev) => {
-          ev.dataTransfer.setData('text/plain', t.dataUrl);
-        });
-        thumbs.appendChild(div);
-      });
-    }
-
-    // A4 canvas drag-drop handling
-    a4canvas.addEventListener('dragover', (ev) => { ev.preventDefault(); });
-    a4canvas.addEventListener('drop', (ev) => {
-      ev.preventDefault();
-      const dataUrl = ev.dataTransfer.getData('text/plain');
-      if (!dataUrl) return;
-      // compute which cell was dropped on
-      const rect = a4canvas.getBoundingClientRect();
-      const x = Math.round((ev.clientX - rect.left) * (a4canvas.width / rect.width));
-      const y = Math.round((ev.clientY - rect.top) * (a4canvas.height / rect.height));
-      let targetIdx = null;
-      for (let i=0;i<cells.length;i++){
-        const c = cells[i];
-        if (x>=c.x && x<=c.x+c.w && y>=c.y && y<=c.y+c.h) { targetIdx = i; break; }
-      }
-      if (targetIdx === null) {
-        alert("אין משבצת כאן");
+      // מושך את רשימת האותיות הקיימות בשרת
+      const res = await fetch('/api/list_glyphs');
+      const json = await res.json();
+      if(json.error){
+        uploadStatus.textContent = "שגיאה בטעינת אותיות: " + json.error;
         return;
       }
-      // place image centered in that cell
-      const im = new Image();
-      im.onload = () => { placed[targetIdx] = { img: im }; drawA4(); };
-      im.src = dataUrl;
-    });
 
-    // click on A4 to remove placed glyph
-    a4canvas.addEventListener('click', (ev) => {
-      const rect = a4canvas.getBoundingClientRect();
-      const x = Math.round((ev.clientX - rect.left) * (a4canvas.width / rect.width));
-      const y = Math.round((ev.clientY - rect.top) * (a4canvas.height / rect.height));
-      for (let i=0;i<cells.length;i++){
-        const c = cells[i];
-        if (x>=c.x && x<=c.x+c.w && y>=c.y && y<=c.y+c.h){
-          if (i in placed) {
-            if (confirm("להסיר את החיתוך מהמשבצת הזו?")) { delete placed[i]; drawA4(); }
+      if(json.files.length === 0){
+        uploadStatus.textContent = 'אין אותיות חתוכות. חתוך אותיות תחילה.';
+        return;
+      }
+
+      // מציג אותיות עם כפתור שמירה (פונקציית שמירה תשלח לשרת)
+      json.files.forEach((filename, index) => {
+        const letterName = filename.split('_')[1]?.replace('.png','') || filename.replace('.png','');
+
+        const card = document.createElement('div');
+        card.className = 'glyph-card';
+
+        const img = document.createElement('img');
+        img.src = `/static/glyphs/${filename}`;
+        img.alt = `אות ${letterName}`;
+        card.appendChild(img);
+
+        const btnSave = document.createElement('button');
+        btnSave.textContent = 'שמור אות במשבצת';
+        btnSave.onclick = () => saveGlyphCrop(index, letterName, img.src);
+        card.appendChild(btnSave);
+
+        glyphsArea.appendChild(card);
+      });
+
+      cropGrid.style.display = 'grid';
+    }
+
+    // פונקציה לשמירת אות במשבצת (שולחת קריאה לשרת)
+    async function saveGlyphCrop(index, letterName, imgSrc) {
+      finalStatus.textContent = '';
+      btnGenerate.disabled = true;
+      btnDownload.style.display = 'none';
+
+      // נטען את התמונה מ-URL ל-canvas ונמיר ל-base64
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      image.src = imgSrc;
+      image.onload = async () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(image, 0, 0);
+
+        // קבלת נתוני base64
+        const dataURL = canvas.toDataURL('image/png');
+
+        try {
+          const res = await fetch('/backend/save_crop', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+              name: letterName,
+              index: index,
+              data: dataURL
+            })
+          });
+          const json = await res.json();
+          if(json.error){
+            finalStatus.textContent = `שגיאה בשמירת האות ${letterName}: ${json.error}`;
+          } else {
+            finalStatus.textContent = `האות ${letterName} נשמרה בהצלחה!`;
+            // מעדכן תמונה במשבצת
+            const cell = cropGrid.querySelector(`.crop-cell[data-letter="${letterName}"]`);
+            if(cell){
+              cell.innerHTML = ''; // מחק טקסט placeholder
+              const imgCrop = document.createElement('img');
+              imgCrop.src = dataURL;
+              imgCrop.alt = `אות ${letterName}`;
+              cell.appendChild(imgCrop);
+            }
           }
+          btnGenerate.disabled = false;
+        } catch(e){
+          finalStatus.textContent = `שגיאה בשמירת האות ${letterName}: ${e.message}`;
         }
-      }
-    });
-
-    function drawA4(){ drawBase(); drawPlaced(); }
-    function drawBase(){
-      ctxA4.fillStyle = '#fff'; ctxA4.fillRect(0,0,a4canvas.width,a4canvas.height);
-      ctxA4.strokeStyle = '#bbb'; ctxA4.lineWidth = 2; ctxA4.font = "24px Arial"; ctxA4.fillStyle = '#333';
-      for (let i=0;i<cells.length;i++){
-        const cell = cells[i];
-        ctxA4.strokeRect(cell.x, cell.y, cell.w, cell.h);
-        if (i<gridOrder.length) ctxA4.fillText(gridOrder[i], cell.x+8, cell.y+28);
-      }
-    }
-    function drawPlaced(){
-      for (const key in placed){
-        const p = placed[key]; const cell = cells[key];
-        if (!cell) continue;
-        const img = p.img;
-        const maxW = cell.w - 20, maxH = cell.h - 20;
-        const ratio = Math.min(maxW/img.width, maxH/img.height, 1);
-        const w = Math.round(img.width * ratio), h = Math.round(img.height * ratio);
-        const dx = cell.x + Math.round((cell.w - w)/2), dy = cell.y + Math.round((cell.h - h)/2);
-        ctxA4.drawImage(img, dx, dy, w, h);
-        ctxA4.strokeStyle = '#2a9d8f'; ctxA4.lineWidth = 3; ctxA4.strokeRect(cell.x+2, cell.y+2, cell.w-4, cell.h-4);
-      }
+      };
     }
 
-    // Save all placed glyphs to server
-    btnSaveGlyphs.addEventListener('click', async () => {
-      const keys = Object.keys(placed).map(k=>parseInt(k)).sort((a,b)=>a-b);
-      if (keys.length === 0) { alert("אין חיתוכים לשמירה"); return; }
-      status.innerText = "שומר חיתוכים בשרת...";
-      for (const k of keys){
-        const cell = cells[k];
-        const placedImg = placed[k].img;
-        // create canvas of exact cell size (for later potrace)
-        const tmp = document.createElement('canvas');
-        tmp.width = cell.w; tmp.height = cell.h;
-        const tctx = tmp.getContext('2d');
-        tctx.fillStyle = '#fff'; tctx.fillRect(0,0,tmp.width,tmp.height);
-        // draw centered
-        const ratio = Math.min((cell.w-20)/placedImg.width, (cell.h-20)/placedImg.height, 1);
-        const w = Math.round(placedImg.width*ratio), h = Math.round(placedImg.height*ratio);
-        const dx = Math.round((tmp.width - w)/2), dy = Math.round((tmp.height - h)/2);
-        tctx.drawImage(placedImg, dx, dy, w, h);
-        const dataUrl = tmp.toDataURL('image/png');
-        // send to server
-        await fetch('/api/save_crop', {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json' },
-          body: JSON.stringify({ name: gridOrder[k], index: k, data: dataUrl })
+    // כפתור יצירת פונט TTF
+    btnGenerate.addEventListener('click', async () => {
+      finalStatus.textContent = 'יוצר פונט... אנא המתן.';
+      btnGenerate.disabled = true;
+
+      try {
+        const res = await fetch('/api/finalize', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({output_ttf: 'my_handwriting.ttf'})
         });
+        const json = await res.json();
+
+        if(json.error){
+          finalStatus.textContent = 'שגיאה ביצירת הפונט: ' + json.error;
+          btnGenerate.disabled = false;
+          return;
+        }
+
+        finalStatus.textContent = 'הפונט נוצר בהצלחה!';
+        btnDownload.style.display = 'inline-block';
+        btnDownload.dataset.filename = json.ttf;
+
+      } catch(e) {
+        finalStatus.textContent = 'שגיאה ביצירת הפונט: ' + e.message;
+        btnGenerate.disabled = false;
       }
-      status.innerText = "כל החיתוכים נשמרו בשרת.";
-      btnFinalize.disabled = false;
-      btnDownloadFont.disabled = false;
     });
 
-    // finalize -> create font (server must have generate_ttf)
-    btnFinalize.addEventListener('click', async () => {
-      status.innerText = "יוצר פונט בשרת... זה עלול לקחת זמן.";
-      const res = await fetch('/api/finalize', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ output_ttf: 'user_font.ttf' }) });
-      const json = await res.json();
-      if (json.error) { status.innerText = "שגיאה: "+json.error; alert("שגיאה: "+json.error); return; }
-      status.innerHTML = `פונט נוצר: <a href="/download/${json.ttf}">${json.ttf}</a>`;
-      btnDownloadFont.disabled = false;
-      btnDownloadFont.onclick = () => { window.location = '/download/' + json.ttf; };
+    // הורדת הפונט
+    btnDownload.addEventListener('click', () => {
+      const filename = btnDownload.dataset.filename;
+      if(filename){
+        window.location.href = `/download/${filename}`;
+      }
     });
 
-    // download current A4 PNG
-    downloadAll.addEventListener('click', () => {
-      const url = a4canvas.toDataURL('image/png');
-      const a = document.createElement('a'); a.href = url; a.download = 'a4_page.png'; a.click();
-    });
-
-    // initial draw
-    drawA4();
-
-  })();
   </script>
 </body>
 </html>
