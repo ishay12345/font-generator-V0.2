@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>חיתוך אותיות</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/cropper.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
         body { text-align: center; background: #f0f0f0; font-family: Arial; }
         img { max-width: 80%; margin-top: 20px; }
@@ -15,7 +15,7 @@
     <br><br>
     <button id="saveCrop">שמור</button>
 
-    <script src="{{ url_for('static', filename='js/cropper.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
         const image = document.getElementById('image');
         const cropper = new Cropper(image, {
