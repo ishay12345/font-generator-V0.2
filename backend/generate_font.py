@@ -6,7 +6,7 @@ from fontTools.pens.transformPen import TransformPen
 from fontTools.misc.transform import Identity
 from xml.dom import minidom
 
-# מיפוי אותיות לעברית
+# מיפוי שמות קבצים לאותיות עבריות
 letter_map = {
     "alef": 0x05D0,
     "bet": 0x05D1,
@@ -17,9 +17,9 @@ letter_map = {
     "zayin": 0x05D6,
     "het": 0x05D7,
     "tet": 0x05D8,
-    "yod": 0x05D9,      # יוד
-    "kaf": 0x05DB,      # כף
-    "lamed": 0x05DC,    # למד
+    "yod": 0x05D9,
+    "kaf": 0x05DB,
+    "lamed": 0x05DC,
     "mem": 0x05DE,
     "nun": 0x05E0,
     "samekh": 0x05E1,
@@ -36,7 +36,6 @@ letter_map = {
     "final_pe": 0x05E3,
     "final_tsadi": 0x05E5
 }
-
 
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
@@ -78,8 +77,6 @@ def generate_ttf(svg_folder, output_ttf):
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
             glyph.width = 600
-
-            # ✨ ריווח צמוד יותר בין אותיות
             glyph.leftMargin = 50
             glyph.rightMargin = 50
 
@@ -90,23 +87,15 @@ def generate_ttf(svg_folder, output_ttf):
                     continue
                 try:
                     if name == "yod":
-                        transform = Identity.translate(0, 0)  # הזזה מעלה
+                        transform = Identity.translate(0, 200)
                     elif name == "qof":
-                        transform = Identity.translate(0, -300)  # הורדה
+                        transform = Identity.translate(0, -300)
                     elif name == "pe":
-                        transform = Identity.translate(0, -59)  # הזזה מעלה
+                        transform = Identity.translate(0, 100)
                     elif name == "lamed":
-                        transform = Identity.translate(0, 380)  # הורדה
-                    elif name == "resh":
-                        transform = Identity.translate(0, -170)  # הורדה
-                    elif name == "final_kaf":
-                        transform = Identity.translate(0, -330)  # הורדה
-                    elif name == "final_pe":
-                        transform = Identity.translate(0, -270)  # הורדה
-                    elif name == "final_tsadi":
-                        transform = Identity.translate(0, -250)  # הורדה        
+                        transform = Identity.translate(0, 380)
                     else:
-                        transform = Identity.translate(0, 0)  # ללא שינוי
+                        transform = Identity.translate(0, 0)
 
                     pen = TransformPen(glyph.getPen(), transform)
                     parse_path(d, pen)
