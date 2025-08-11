@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+    <meta charset="UTF-8" />
+    <title>חיתוך אותיות - Cropper</title>
+    <style>
+        body { direction: rtl; font-family: Arial, sans-serif; padding: 20px; background: #f7f7f7; }
+        #crop-container { max-width: 900px; margin: auto; background: white; padding: 10px; box-shadow: 0 0 8px #ccc; }
+        #image { max-width: 100%; display: block; margin: auto; }
+        #grid {
+          position: absolute;
+          top: 0; left: 50%;
+          transform: translateX(-50%);
+          width: 794px;  /* רוחב A4 בפיקסלים */
+          height: 1123px; /* גובה A4 בפיקסלים */
+          pointer-events: none;
+          border: 1px solid #333;
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          grid-template-rows: repeat(4, 1fr);
+          gap: 2px;
+        }
+        #grid div {
+          border: 1px solid #aaa;
+          background: white;
+        }
+        #controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+    </style>
+
+    <!-- קישור ל-Cropper.js (מה-CDN) -->
+    <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <h1>חיתוך אותיות בעזרת Cropper.js</h1>
+
+    <div id="crop-container" style="position:relative;">
+        <img id="image" src="{{ url_for('static', filename='uploads/proc_uploaded_image.png') }}" alt="תמונה לחיתוך" />
+        <div id="grid">
+          <!-- 28 משבצות (7x4) -->
+          <!-- אפשר למלא עם divים שקופים, כל משבצת בגודל אחיד -->
+          {% for i in range(28) %}
+          <div></div>
+          {% endfor %}
+        </div>
+    </div>
+
+    <div id="controls">
+        <button id="save-crops">שמור חתיכות וייצר פונט</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <script>
+        const image = document.getElementById('image');
+        const cropper = new Cropper(image, {
+            viewMode: 1,
+            dragMode: 'none',
+            autoCrop: false,
+            guides: false,
+            highlight: false,
+            cropBoxMovable: false,
+            cropBoxResizable: false,
+            toggleDragModeOnDblclick: false,
+        });
+
+        // לולאה ליצירת חיתוכים אוטומטיים למשבצות (לפי הרשת)
+        // נניח שאתה יודע את רוחב וגובה המשבצת:
+        const grid = document.getElementById('grid');
+        const cols = 7;
+        const rows = 4;
+
+        // פונקציה שתחלץ חתיכה מתוך התמונה לפי משבצת
+        function getCropData(col, row) {
+            const imgRect = image.getBoundingClientRect();
+            const cropWidth = imgRect.width / cols;
+            const cropHeight = imgRect.height / rows;
+
+            return {
+                x: cropWidth * col,
+                y: cropHeight * row,
+                width: cropWidth,
+                height: cropHeight
+            };
+        }
+
+        async function saveAllCrops() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = image;
+
+            const imgNaturalWidth = img.naturalWidth;
+            const imgNaturalHeight = img.naturalHeight;
+
+            const savedNames = [];
+
+            for(let row=0; row<rows; row++) {
+                for(let col=0; col<cols; col++) {
+                    const cropData = getCropData(col, row);
+                    // מיקום היחסי בתמונה הטבעית:
+                    const scaleX = imgNaturalWidth / image.clientWidth;
+                    const scaleY = imgNaturalHeight / image.clientHeight;
+
+                    const sx = cropData.x * scaleX;
+                    const sy = cropData.y * scaleY;
+                    const sw = cropData.width * scaleX;
+                    const sh = cropData.height * scaleY;
+
+                    canvas.width = sw;
+                    canvas.height = sh;
+
+                    ctx.clearRect(0,0,sw,sh);
+                    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+                    // קבלת base64 של כל חתיכה
+                    const dataUrl = canvas.toDataURL("image/png");
+
+                    // שולח לשרת לשמירה (צריך route מתאים)
+                    // שולחים את האינדקס ואת שם האות (לדוגמה לפי סדר או לפי מיפוי)
+                    const nameMap = [
+                      "alef","bet","gimel","dalet","he","vav","zayin",
+                      "het","tet","yod","kaf","lamed","mem","nun",
+                      "samekh","ayin","pe","tsadi","qof","resh","shin",
+                      "tav","final_kaf","final_mem","final_nun","final_pe","final_tsadi"
+                    ];
+
+                    const index = row*cols + col;
+                    const name = nameMap[index] || `glyph${index}`;
+
+                    try {
+                        const resp = await fetch('/backend/save_crop', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                name: name,
+                                index: index,
+                                data: dataUrl
+                            })
+                        });
+                        const json = await resp.json();
+                        if (json.saved) {
+                            savedNames.push(json.saved);
+                        } else {
+                            alert("שגיאה בשמירת האות "+name);
+                        }
+                    } catch(e) {
+                        alert("שגיאה בשרת: "+e);
+                        return;
+                    }
+                }
+            }
+
+            alert("שומר את כל האותיות בהצלחה!");
+            // כאן אפשר להוסיף הפנייה לדף יצירת הפונט או להראות כפתור
+            window.location.href = "/finalize_font";
+        }
+
+        document.getElementById('save-crops').addEventListener('click', saveAllCrops);
+    </script>
+</body>
+</html>
