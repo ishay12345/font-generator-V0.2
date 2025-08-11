@@ -5,50 +5,42 @@ import base64
 import cv2
 import numpy as np
 
-# אם יש לך generate_font.py עם פונקציה generate_ttf(svg_folder, output_ttf)
 try:
     from generate_font import generate_ttf
     HAVE_GENERATE_FONT = True
 except Exception:
     HAVE_GENERATE_FONT = False
 
-# BASE הוא התיקייה של הקובץ הזה (backend)
-BASE = Path(__file__).parent.resolve()
-UPLOADS = BASE / "uploads"
-GLYPHS  = BASE / "glyphs"
-OUTPUT  = BASE / "output"
+# הגדרת תיקיית הבסיס ותיקיית התבניות (templates)
+BASE_DIR = Path(__file__).parent.resolve()
+TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
 
-# יצירת תיקיות אם לא קיימות
+UPLOADS = BASE_DIR / "uploads"
+GLYPHS  = BASE_DIR / "glyphs"
+OUTPUT  = BASE_DIR / "output"
+
 for p in (UPLOADS, GLYPHS, OUTPUT):
     p.mkdir(exist_ok=True)
 
-app = Flask(
-    __name__,
-    template_folder=str(BASE / "templates"),
-    static_folder=str(BASE / "static")
-)
+app = Flask(__name__, template_folder=TEMPLATE_DIR)
 
-# הזזות אנכיות מותאמות לפי אותיות (פיקסלים)
 vertical_offsets = {
-    "yod": -60,          # יוד - הזזה למעלה
-    "qof": 50,           # ק - הזזה למטה
-    "final_kaf": 50,     # ך - הזזה למטה
-    "final_nun": 50,     # ן - הזזה למטה
-    "final_pe": 50,      # ף - הזזה למטה
-    "final_tsadi": 50    # ץ - הזזה למטה
+    "yod": -60,
+    "qof": 50,
+    "final_kaf": 50,
+    "final_nun": 50,
+    "final_pe": 50,
+    "final_tsadi": 50
 }
 
 def normalize_and_center_glyph(img, target_size=600, margin=50, vertical_offset=0):
-    # המרת תמונה לאותיות שחור על לבן (לא הפוך)
     if len(img.shape) == 3:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # סף להפוך את האות לשחור (0) והרקע ללבן (255)
     _, img_bw = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)
 
-    coords = cv2.findNonZero(255 - img_bw)  # כי האות בשחור (0), נחפש פיקסלים שחורים
+    coords = cv2.findNonZero(255 - img_bw)
     if coords is None:
-        # אם לא נמצאו פיקסלים, מחזירים תמונה לבנה
         return 255 * np.ones((target_size, target_size), dtype=np.uint8)
 
     x, y, w, h = cv2.boundingRect(coords)
@@ -70,12 +62,10 @@ def normalize_and_center_glyph(img, target_size=600, margin=50, vertical_offset=
 
 @app.route('/')
 def index():
-    # דף ראשי להעלאת תמונה
     return render_template('index.html')
 
 @app.route('/crop')
 def crop_page():
-    # דף חיתוך האותיות עם כלי Cropper.js
     return render_template('crop.html')
 
 @app.route('/api/upload', methods=['POST'])
@@ -90,7 +80,6 @@ def api_upload():
     with open(save_path, 'wb') as fh:
         fh.write(raw)
 
-    # מחזיר רק נתוני base64 להציג
     b64 = base64.b64encode(raw).decode('ascii')
     data_url = f"data:image/png;base64,{b64}"
     return jsonify({
@@ -159,6 +148,5 @@ def download_file(filename):
     return jsonify({"error": "file not found"}), 404
 
 if __name__ == '__main__':
-    # הפעל ב־0.0.0.0 כדי שיהיה נגיש מ־Render או שרת חיצוני אחר
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
