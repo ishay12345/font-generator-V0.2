@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, jsonify, send_file
+from flask import Flask, request, render_template, jsonify, send_file, send_from_directory
 from pathlib import Path
 import os, io, base64
 import cv2
@@ -62,7 +62,7 @@ def normalize_and_center_glyph(img, target_size=600, margin=50, vertical_offset=
 
     canvas[y_offset:y_offset+new_h, x_offset:x_offset+new_w] = resized
 
-    # להחזיר לשחור על לבן
+    # להחזיר לשחור על לבן (פונט רוצה ערכים הפוכים)
     return 255 - canvas
 
 @app.route('/')
@@ -202,6 +202,11 @@ def download_file(filename):
     if path.exists():
         return send_file(str(path), as_attachment=True, download_name=filename)
     return jsonify({"error": "file not found"}), 404
+
+# הוספת רוט סטטי לשירות קבצי glyphs
+@app.route('/glyphs/<path:filename>')
+def serve_glyphs(filename):
+    return send_from_directory(str(GLYPHS), filename)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=True)
