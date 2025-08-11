@@ -1,43 +1,37 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, send_file
-from process_image import convert_to_black_white
+from flask import Flask, render_template, request, jsonify, send_from_directory
 
-# הגדרות Render
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# הגדרת נתיבים
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # backend/
+TEMPLATE_DIR = os.path.join(BASE_DIR, '..', 'templates')  # תיקיית templates מחוץ ל-backend
+STATIC_DIR = os.path.join(BASE_DIR, '..', 'static')    # תיקיית static מחוץ ל-backend
 
-app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'))
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 
-@app.route("/")
+@app.route('/')
 def index():
-    return render_template("index.html")
+    return render_template('index.html')
 
-@app.route("/upload", methods=["POST"])
-def upload_file():
-    if "file" not in request.files:
-        return "No file uploaded", 400
-    
-    file = request.files["file"]
-    if file.filename == "":
-        return "No selected file", 400
-    
-    # שמירת קובץ
-    input_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-    file.save(input_path)
-    
-    # המרה לשחור־לבן
-    bw_path = os.path.join(app.config['UPLOAD_FOLDER'], "bw_" + file.filename)
-    convert_to_black_white(input_path, bw_path)
-    
-    # מעבר לעמוד החיתוך
-    return redirect(url_for("crop_page", filename="bw_" + file.filename))
+@app.route('/crop')
+def crop():
+    return render_template('crop.html')
 
-@app.route("/crop/<filename>")
-def crop_page(filename):
-    return render_template("crop.html", image_url=url_for('static', filename=f'processed/{filename}'))
+# דוגמה לנתיב לקבלת קבצי סטטיים אם צריך
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory(STATIC_DIR, filename)
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+# לדוגמא - נקודת API לקבלת תמונה ולהחזיר תוצאה מומרת לשחור-לבן
+@app.route('/api/upload', methods=['POST'])
+def upload():
+    file = request.files.get('file')
+    if not file:
+        return jsonify({'error': 'לא נשלח קובץ'})
+
+    # כאן היית מיישם המרה לשחור לבן או כל עיבוד אחר
+    # לדוגמא שמירה זמנית או עיבוד ב-PIL
+    # נחזיר כאן תשובה דמה לצורך הדגמה
+    return jsonify({'processed_b64': 'data:image/png;base64,...'})
+
+if __name__ == '__main__':
+    app.run(debug=True)
