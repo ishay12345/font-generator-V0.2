@@ -6,43 +6,38 @@ from fontTools.pens.transformPen import TransformPen
 from fontTools.misc.transform import Identity
 from xml.dom import minidom
 
-# מיפוי שמות קבצים לאותיות עבריות
+# מיפוי אותיות לעברית
 letter_map = {
-    "alef": 0x05D0,
-    "bet": 0x05D1,
-    "gimel": 0x05D2,
-    "dalet": 0x05D3,
-    "he": 0x05D4,
-    "vav": 0x05D5,
-    "zayin": 0x05D6,
-    "het": 0x05D7,
-    "tet": 0x05D8,
-    "yod": 0x05D9,
-    "kaf": 0x05DB,
-    "lamed": 0x05DC,
-    "mem": 0x05DE,
-    "nun": 0x05E0,
-    "samekh": 0x05E1,
-    "ayin": 0x05E2,
-    "pe": 0x05E4,
-    "tsadi": 0x05E6,
-    "qof": 0x05E7,
-    "resh": 0x05E8,
-    "shin": 0x05E9,
-    "tav": 0x05EA,
-    "final_kaf": 0x05DA,
-    "final_mem": 0x05DD,
-    "final_nun": 0x05DF,
-    "final_pe": 0x05E3,
-    "final_tsadi": 0x05E5
+   "alef": 0x05D0, "bet": 0x05D1, "gimel": 0x05D2, "dalet": 0x05D3,
+   "he": 0x05D4, "vav": 0x05D5, "zayin": 0x05D6, "het": 0x05D7,
+   "tet": 0x05D8, "lamed": 0x05DC,
+   "yod": 0x05D9,
+   "kaf": 0x05DB, "final_kaf": 0x05DA,
+   "mem": 0x05DE, "final_mem": 0x05DD,
+   "nun": 0x05E0, "final_nun": 0x05DF,
+   "samekh": 0x05E1, "ayin": 0x05E2,
+   "pe": 0x05E4, "final_pe": 0x05E3,
+   "tsadi": 0x05E6, "final_tsadi": 0x05E5,
+   "qof": 0x05E7, "resh": 0x05E8,
+   "shin": 0x05E9, "tav": 0x05EA,
+}
+
+# מיפוי הזזות אנכיות מותאמות לפי אות (פיקסלים)
+vertical_offsets = {
+    "yod": 500,         # הזזה מעלה (יחסית ל־coordinate system ב־SVG)
+    "qof": -200,        # הזזה למטה
+    "final_kaf": -200,
+    "final_nun": -200,
+    "final_pe": -200,
+    "final_tsadi": -200,
 }
 
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
     font = Font()
-    font.info.familyName = "plsHebrew Handwriting"
+    font.info.familyName = "gHebrew Handwriting"
     font.info.styleName = "Regular"
-    font.info.fullName = "plsHebrew Handwriting"
+    font.info.fullName = "gHebrew Handwriting"
     font.info.unitsPerEm = 1000
     font.info.ascender = 800
     font.info.descender = -200
@@ -76,9 +71,18 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-            glyph.width = 600
-            glyph.leftMargin = 50
-            glyph.rightMargin = 50
+            glyph.width = 600  # רוחב אחיד, אפשר לשנות לפי צורך
+
+            glyph.leftMargin = 40
+            glyph.rightMargin = 40
+
+            # הזזה אנכית מתאימה לפי אות
+            vertical_shift = vertical_offsets.get(name, 0)
+
+            pen = glyph.getPen()
+            transform = Identity.translate(0, vertical_shift)
+
+            tp = TransformPen(pen, transform)
 
             successful = False
             for path_element in paths:
@@ -86,19 +90,7 @@ def generate_ttf(svg_folder, output_ttf):
                 if not d.strip():
                     continue
                 try:
-                    if name == "yod":
-                        transform = Identity.translate(0, 200)
-                    elif name == "qof":
-                        transform = Identity.translate(0, -300)
-                    elif name == "pe":
-                        transform = Identity.translate(0, 100)
-                    elif name == "lamed":
-                        transform = Identity.translate(0, 380)
-                    else:
-                        transform = Identity.translate(0, 0)
-
-                    pen = TransformPen(glyph.getPen(), transform)
-                    parse_path(d, pen)
+                    parse_path(d, tp)
                     successful = True
                 except Exception as e:
                     print(f"⚠️ שגיאה בנתיב ב-{filename}: {e}")
