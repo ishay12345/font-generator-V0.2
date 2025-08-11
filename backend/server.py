@@ -1,17 +1,18 @@
+import os
 from flask import Flask, request, render_template, jsonify, send_file
 from pathlib import Path
-import os, base64
+import base64
 import cv2
 import numpy as np
 
-# אם יש לך generate_font.py עם הפונקציה generate_ttf(svg_folder, output_ttf)
+# אם יש לך generate_font.py עם פונקציה generate_ttf(svg_folder, output_ttf)
 try:
     from generate_font import generate_ttf
     HAVE_GENERATE_FONT = True
 except Exception:
     HAVE_GENERATE_FONT = False
 
-# נתיב בסיס לתיקיית backend
+# BASE הוא התיקייה של הקובץ הזה (backend)
 BASE = Path(__file__).parent.resolve()
 UPLOADS = BASE / "uploads"
 GLYPHS  = BASE / "glyphs"
@@ -29,21 +30,25 @@ app = Flask(
 
 # הזזות אנכיות מותאמות לפי אותיות (פיקסלים)
 vertical_offsets = {
-    "yod": -60,          # יוד - למעלה
-    "qof": 50,           # ק - למטה
-    "final_kaf": 50,     # ך - למטה
-    "final_nun": 50,     # ן - למטה
-    "final_pe": 50,      # ף - למטה
-    "final_tsadi": 50    # ץ - למטה
+    "yod": -60,          # יוד - הזזה למעלה
+    "qof": 50,           # ק - הזזה למטה
+    "final_kaf": 50,     # ך - הזזה למטה
+    "final_nun": 50,     # ן - הזזה למטה
+    "final_pe": 50,      # ף - הזזה למטה
+    "final_tsadi": 50    # ץ - הזזה למטה
 }
 
 def normalize_and_center_glyph(img, target_size=600, margin=50, vertical_offset=0):
+    # המרת תמונה לאותיות שחור על לבן (לא הפוך)
     if len(img.shape) == 3:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    _, img_bw = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY_INV)
-    coords = cv2.findNonZero(img_bw)
+    # סף להפוך את האות לשחור (0) והרקע ללבן (255)
+    _, img_bw = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)
+
+    coords = cv2.findNonZero(255 - img_bw)  # כי האות בשחור (0), נחפש פיקסלים שחורים
     if coords is None:
+        # אם לא נמצאו פיקסלים, מחזירים תמונה לבנה
         return 255 * np.ones((target_size, target_size), dtype=np.uint8)
 
     x, y, w, h = cv2.boundingRect(coords)
@@ -61,12 +66,17 @@ def normalize_and_center_glyph(img, target_size=600, margin=50, vertical_offset=
     y_offset = max(0, min(y_offset, target_size - new_h))
 
     canvas[y_offset:y_offset+new_h, x_offset:x_offset+new_w] = resized
-
-    return 255 - canvas  # להחזיר לשחור על לבן
+    return canvas
 
 @app.route('/')
 def index():
+    # דף ראשי להעלאת תמונה
     return render_template('index.html')
+
+@app.route('/crop')
+def crop_page():
+    # דף חיתוך האותיות עם כלי Cropper.js
+    return render_template('crop.html')
 
 @app.route('/api/upload', methods=['POST'])
 def api_upload():
@@ -80,78 +90,24 @@ def api_upload():
     with open(save_path, 'wb') as fh:
         fh.write(raw)
 
-    try:
-        bw_bytes = process_image_to_bw_bytes(raw)
-    except Exception as e:
-        return jsonify({"error": f"processing error: {e}"}), 500
-
-    proc_name = f"proc_{fname}"
-    proc_path = UPLOADS / proc_name
-    with open(proc_path, 'wb') as fh:
-        fh.write(bw_bytes)
-
-    b64 = base64.b64encode(bw_bytes).decode('ascii')
+    # מחזיר רק נתוני base64 להציג
+    b64 = base64.b64encode(raw).decode('ascii')
+    data_url = f"data:image/png;base64,{b64}"
     return jsonify({
-        "processed_b64": f"data:image/png;base64,{b64}",
         "uploaded_filename": fname,
-        "processed_filename": proc_name
+        "data_url": data_url
     })
 
-def process_image_to_bw_bytes(image_bytes):
-    nparr = np.frombuffer(image_bytes, np.uint8)
-    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    if img is None:
-        raise ValueError("Invalid image data")
-
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img_eq = cv2.equalizeHist(gray)
-    blur = cv2.GaussianBlur(img_eq, (5,5), 0)
-
-    adapt = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                  cv2.THRESH_BINARY_INV, 23, 9)
-    _, otsu = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    bw = cv2.bitwise_or(adapt, otsu)
-
-    kernel_small = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
-    bw = cv2.morphologyEx(bw, cv2.MORPH_OPEN, kernel_small, iterations=1)
-
-    kernel_close1 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
-    kernel_close2 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
-    bw = cv2.morphologyEx(bw, cv2.MORPH_CLOSE, kernel_close1, iterations=2)
-    bw = cv2.morphologyEx(bw, cv2.MORPH_CLOSE, kernel_close2, iterations=1)
-
-    bw = cv2.dilate(bw, cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2)), iterations=1)
-
-    min_fg_area = 40
-    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(bw, connectivity=8)
-    mask = np.zeros_like(bw)
-    for i in range(1, num_labels):
-        area = stats[i, cv2.CC_STAT_AREA]
-        if area >= min_fg_area:
-            mask[labels == i] = 255
-    bw = mask
-
-    inv = cv2.bitwise_not(bw)
-    num2, lbl2, stats2, _ = cv2.connectedComponentsWithStats(inv, connectivity=8)
-    hole_thresh = 800
-    for i in range(1, num2):
-        area = stats2[i, cv2.CC_STAT_AREA]
-        if area <= hole_thresh:
-            inv[lbl2 == i] = 0
-    bw_final = cv2.bitwise_not(inv)
-    bw_final = cv2.medianBlur(bw_final, 3)
-
-    _, png = cv2.imencode('.png', bw_final)
-    return png.tobytes()
-
-@app.route('/api/save_crop', methods=['POST'])
+@app.route('/backend/save_crop', methods=['POST'])
 def api_save_crop():
     data = request.get_json()
     if not data:
         return jsonify({"error": "no data"}), 400
+
     name = data.get('name')
     index = data.get('index')
     imageData = data.get('data')
+
     if not name or imageData is None:
         return jsonify({"error": "missing fields"}), 400
 
@@ -203,4 +159,6 @@ def download_file(filename):
     return jsonify({"error": "file not found"}), 404
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=True)
+    # הפעל ב־0.0.0.0 כדי שיהיה נגיש מ־Render או שרת חיצוני אחר
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
