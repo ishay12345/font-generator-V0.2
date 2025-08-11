@@ -1,1 +1,239 @@
-s
+<!DOCTYPE html>
+<html lang="he">
+<head>
+<meta charset="UTF-8" />
+<title>חיתוך אותיות - Cropper + הורדה</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    direction: rtl;
+    background: #222;
+    color: white;
+    text-align: center;
+    padding: 20px;
+  }
+  #image-container {
+    max-width: 800px;
+    margin: 20px auto;
+    position: relative;
+  }
+  img {
+    max-width: 100%;
+    border: 2px solid white;
+  }
+  #controls {
+    margin-top: 20px;
+  }
+  button {
+    background: #007bff;
+    border: none;
+    color: white;
+    padding: 12px 25px;
+    font-size: 18px;
+    margin: 0 10px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  button:disabled {
+    background: #555;
+    cursor: not-allowed;
+  }
+  #status {
+    margin-top: 15px;
+    font-size: 16px;
+    min-height: 20px;
+  }
+  #download-btn {
+    background: #28a745;
+  }
+</style>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet"/>
+</head>
+<body>
+
+<h1>חיתוך אותיות - שלב {{current}} מתוך {{total}}</h1>
+
+<div id="image-container">
+  <img id="image" src="{{ processed_image_url }}" alt="תמונה לחיתוך" />
+</div>
+
+<div id="controls">
+  <button id="save-btn">שמור אות</button>
+  <button id="skip-btn">דלג על אות</button>
+  <button id="download-btn" style="display:none;">הורד פונט</button>
+</div>
+
+<div id="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+<script>
+  // רשימת האותיות לפי סדר חיתוך
+  const letterMap = [
+    "alef","bet","gimel","dalet","he","vav","zayin",
+    "het","tet","yod","kaf","lamed","mem","nun",
+    "samekh","ayin","pe","tsadi","qof","resh","shin",
+    "tav","final_kaf","final_mem","final_nun","final_pe","final_tsadi"
+  ];
+
+  const totalLetters = letterMap.length;
+  let currentIndex = 0;
+
+  const image = document.getElementById('image');
+  const saveBtn = document.getElementById('save-btn');
+  const skipBtn = document.getElementById('skip-btn');
+  const downloadBtn = document.getElementById('download-btn');
+  const status = document.getElementById('status');
+
+  // עדכון כותרת לפי אות
+  function updateTitle() {
+    document.querySelector('h1').textContent = `חיתוך אותיות - אות ${currentIndex + 1} מתוך ${totalLetters} (${letterMap[currentIndex]})`;
+  }
+
+  updateTitle();
+
+  // אתחול Cropper (ללא crop box כי אנחנו נגדיר אותו ידנית)
+  const cropper = new Cropper(image, {
+    viewMode: 1,
+    autoCrop: false,
+    dragMode: 'move',
+    guides: true,
+    background: false,
+    zoomable: true,
+  });
+
+  // פונקציה לקבלת crop לפי משבצת קבועה (אפשר לשנות מימדים לפי הצורך)
+  function getCropBoxForIndex(index) {
+    // נגדיר רשת 7x4 משבצות על התמונה:
+    const cols = 7;
+    const rows = 4;
+    const imgWidth = image.naturalWidth;
+    const imgHeight = image.naturalHeight;
+
+    const boxWidth = imgWidth / cols;
+    const boxHeight = imgHeight / rows;
+
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+
+    return {
+      x: boxWidth * col,
+      y: boxHeight * row,
+      width: boxWidth,
+      height: boxHeight
+    };
+  }
+
+  // הגדרת crop box לפי האות הנוכחית
+  function setCropBox(index) {
+    const box = getCropBoxForIndex(index);
+    cropper.setCropBoxData({
+      left: box.x,
+      top: box.y,
+      width: box.width,
+      height: box.height
+    });
+    cropper.crop();
+  }
+
+  // הגדר לראשונה
+  image.onload = () => {
+    setCropBox(currentIndex);
+  };
+
+  // שמירת האות בשרת
+  async function saveCurrentGlyph() {
+    status.textContent = "שומר אות...";
+    saveBtn.disabled = true;
+    skipBtn.disabled = true;
+
+    try {
+      const canvas = cropper.getCroppedCanvas({
+        width: 600,
+        height: 600,
+        fillColor: 'white'
+      });
+      const dataUrl = canvas.toDataURL('image/png');
+
+      const name = letterMap[currentIndex];
+
+      const resp = await fetch('/backend/save_crop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name,
+          index: currentIndex,
+          data: dataUrl
+        })
+      });
+      const json = await resp.json();
+      if (json.saved) {
+        status.textContent = `האות "${name}" נשמרה בהצלחה!`;
+        currentIndex++;
+        if (currentIndex < totalLetters) {
+          setCropBox(currentIndex);
+          updateTitle();
+          saveBtn.disabled = false;
+          skipBtn.disabled = false;
+        } else {
+          // סיימנו את כל האותיות - מציגים כפתור הורדה
+          status.textContent = "כל האותיות נשמרו! ניתן להוריד את הפונט.";
+          saveBtn.style.display = 'none';
+          skipBtn.style.display = 'none';
+          downloadBtn.style.display = 'inline-block';
+        }
+      } else {
+        status.textContent = "שגיאה בשמירה: " + (json.error || "לא ידוע");
+        saveBtn.disabled = false;
+        skipBtn.disabled = false;
+      }
+    } catch (e) {
+      status.textContent = "שגיאה בשרת: " + e.message;
+      saveBtn.disabled = false;
+      skipBtn.disabled = false;
+    }
+  }
+
+  // דילוג על אות ללא שמירה
+  function skipCurrentGlyph() {
+    status.textContent = `דלג על האות "${letterMap[currentIndex]}"`;
+    currentIndex++;
+    if (currentIndex < totalLetters) {
+      setCropBox(currentIndex);
+      updateTitle();
+    } else {
+      status.textContent = "סיימת את חיתוך האותיות!";
+      saveBtn.style.display = 'none';
+      skipBtn.style.display = 'none';
+      downloadBtn.style.display = 'inline-block';
+    }
+  }
+
+  // הורדת הפונט
+  async function downloadFont() {
+    status.textContent = "יוצר את הפונט, המתן...";
+    downloadBtn.disabled = true;
+    try {
+      const resp = await fetch('/api/finalize', { method: 'POST' });
+      const data = await resp.json();
+      if (data.ttf) {
+        const link = document.createElement('a');
+        link.href = '/download/' + data.ttf;
+        link.download = data.ttf;
+        link.click();
+        status.textContent = "הפונט הורד בהצלחה!";
+      } else {
+        status.textContent = "שגיאה ביצירת הפונט: " + (data.error || "לא ידוע");
+      }
+    } catch (e) {
+      status.textContent = "שגיאה בשרת: " + e.message;
+    }
+    downloadBtn.disabled = false;
+  }
+
+  saveBtn.addEventListener('click', saveCurrentGlyph);
+  skipBtn.addEventListener('click', skipCurrentGlyph);
+  downloadBtn.addEventListener('click', downloadFont);
+</script>
+
+</body>
+</html>
