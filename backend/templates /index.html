@@ -266,7 +266,6 @@
         placeholder.textContent = lettersOrder[i];
         cell.appendChild(placeholder);
 
-        // לאפשר טיפה drag & drop עתידי (אפשר להרחיב)
         cropGrid.appendChild(cell);
       }
     }
@@ -310,8 +309,7 @@
         processedImg.style.display = 'block';
         uploadStatus.textContent = 'התמונה עובדה בהצלחה!';
 
-        // TODO: כאן תוכל לקרוא פונקציית חיתוך (או להציג חיתוך ידני)
-        // בשביל הדוגמה פשוט נטען את התמונה המעובדת ונראה אותיות בממשק
+        // נטען את האותיות הקיימות בשרת ונציג בממשק
         await loadGlyphs();
 
       } catch(e){
@@ -319,12 +317,11 @@
       }
     });
 
-    // פונקציה מדומה לטעינת אותיות (משרת שמירת החיתוכים)
+    // פונקציה לטעינת האותיות מהשרת להצגה
     async function loadGlyphs() {
       glyphsArea.innerHTML = '';
       glyphsArea.style.display = 'flex';
 
-      // מושך את רשימת האותיות הקיימות בשרת
       const res = await fetch('/api/list_glyphs');
       const json = await res.json();
       if(json.error){
@@ -337,7 +334,6 @@
         return;
       }
 
-      // מציג אותיות עם כפתור שמירה (פונקציית שמירה תשלח לשרת)
       json.files.forEach((filename, index) => {
         const letterName = filename.split('_')[1]?.replace('.png','') || filename.replace('.png','');
 
@@ -360,13 +356,12 @@
       cropGrid.style.display = 'grid';
     }
 
-    // פונקציה לשמירת אות במשבצת (שולחת קריאה לשרת)
+    // שמירת אות במשבצת בשרת
     async function saveGlyphCrop(index, letterName, imgSrc) {
       finalStatus.textContent = '';
       btnGenerate.disabled = true;
       btnDownload.style.display = 'none';
 
-      // נטען את התמונה מ-URL ל-canvas ונמיר ל-base64
       const image = new Image();
       image.crossOrigin = "anonymous";
       image.src = imgSrc;
@@ -377,7 +372,6 @@
         const ctx = canvas.getContext('2d');
         ctx.drawImage(image, 0, 0);
 
-        // קבלת נתוני base64
         const dataURL = canvas.toDataURL('image/png');
 
         try {
@@ -395,10 +389,9 @@
             finalStatus.textContent = `שגיאה בשמירת האות ${letterName}: ${json.error}`;
           } else {
             finalStatus.textContent = `האות ${letterName} נשמרה בהצלחה!`;
-            // מעדכן תמונה במשבצת
             const cell = cropGrid.querySelector(`.crop-cell[data-letter="${letterName}"]`);
             if(cell){
-              cell.innerHTML = ''; // מחק טקסט placeholder
+              cell.innerHTML = '';
               const imgCrop = document.createElement('img');
               imgCrop.src = dataURL;
               imgCrop.alt = `אות ${letterName}`;
@@ -412,7 +405,7 @@
       };
     }
 
-    // כפתור יצירת פונט TTF
+    // יצירת פונט TTF
     btnGenerate.addEventListener('click', async () => {
       finalStatus.textContent = 'יוצר פונט... אנא המתן.';
       btnGenerate.disabled = true;
