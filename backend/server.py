@@ -1,16 +1,19 @@
-from flask import Flask, request, render_template, jsonify, send_file, send_from_directory
+from flask import Flask, request, render_template, jsonify, send_file
 from pathlib import Path
-import os, io, base64
+import os
+import io
+import base64
 import cv2
 import numpy as np
 
-# אם יש לך generate_font.py עם הפונקציה generate_ttf(svg_folder, output_ttf)
+# ניסיון לייבא פונקציית generate_ttf מ-generate_font.py
 try:
     from generate_font import generate_ttf
     HAVE_GENERATE_FONT = True
 except Exception:
     HAVE_GENERATE_FONT = False
 
+# נתיבים
 BASE = Path(__file__).parent.resolve()
 UPLOADS = BASE / "uploads"
 GLYPHS  = BASE / "glyphs"
@@ -20,16 +23,21 @@ OUTPUT  = BASE / "output"
 for p in (UPLOADS, GLYPHS, OUTPUT):
     p.mkdir(exist_ok=True)
 
-app = Flask(__name__, template_folder=str(BASE / "templates"), static_folder=str(BASE / "static"))
+# יצירת האפליקציה עם נתיבי תבניות וסטטיים לתיקיית frontend
+app = Flask(
+    __name__,
+    template_folder=str(BASE.parent / "frontend" / "templates"),
+    static_folder=str(BASE.parent / "frontend" / "static")
+)
 
-# הזזות אנכיות מותאמות לפי אותיות (יחידות פיקסלים)
+# מפה של הזזות אנכיות מותאמות לאותיות (פיקסלים)
 vertical_offsets = {
-    "yod": -60,          # יוד - הזזה למעלה
-    "qof": 50,           # ק - הזזה למטה
-    "final_kaf": 50,     # ך - הזזה למטה
-    "final_nun": 50,     # ן - הזזה למטה
-    "final_pe": 50,      # ף - הזזה למטה
-    "final_tsadi": 50    # ץ - הזזה למטה
+    "yod": -60,
+    "qof": 50,
+    "final_kaf": 50,
+    "final_nun": 50,
+    "final_pe": 50,
+    "final_tsadi": 50
 }
 
 def normalize_and_center_glyph(img, target_size=600, margin=50, vertical_offset=0):
@@ -40,63 +48,25 @@ def normalize_and_center_glyph(img, target_size=600, margin=50, vertical_offset=
     _, img_bw = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY_INV)
     coords = cv2.findNonZero(img_bw)
     if coords is None:
-        # אם לא נמצאו פיקסלים שחורים - מחזירים תמונה ריקה לבנה
         return 255 * np.ones((target_size, target_size), dtype=np.uint8)
 
     x, y, w, h = cv2.boundingRect(coords)
     glyph_cropped = img_bw[y:y+h, x:x+w]
 
-    # חישוב סקלת שינוי גודל לשמור על ריווח ומידות אחידות
     max_dim = target_size - 2 * margin
     scale = min(max_dim / w, max_dim / h)
     new_w = int(w * scale)
     new_h = int(h * scale)
     resized = cv2.resize(glyph_cropped, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
-    # יצירת קנבס לבן
     canvas = 255 * np.ones((target_size, target_size), dtype=np.uint8)
     x_offset = (target_size - new_w) // 2
     y_offset = (target_size - new_h) // 2 + vertical_offset
-    # הגבלה כדי שלא ייצא מחוץ למסגרת
     y_offset = max(0, min(y_offset, target_size - new_h))
 
     canvas[y_offset:y_offset+new_h, x_offset:x_offset+new_w] = resized
 
-    # להחזיר לשחור על לבן (פונט רוצה ערכים הפוכים)
     return 255 - canvas
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/api/upload', methods=['POST'])
-def api_upload():
-    f = request.files.get('file')
-    if not f:
-        return jsonify({"error": "no file uploaded"}), 400
-
-    raw = f.read()
-    fname = f.filename
-    save_path = UPLOADS / fname
-    with open(save_path, 'wb') as fh:
-        fh.write(raw)
-
-    try:
-        bw_bytes = process_image_to_bw_bytes(raw)
-    except Exception as e:
-        return jsonify({"error": f"processing error: {e}"}), 500
-
-    proc_name = f"proc_{fname}"
-    proc_path = UPLOADS / proc_name
-    with open(proc_path, 'wb') as fh:
-        fh.write(bw_bytes)
-
-    b64 = base64.b64encode(bw_bytes).decode('ascii')
-    return jsonify({
-        "processed_b64": f"data:image/png;base64,{b64}",
-        "uploaded_filename": fname,
-        "processed_filename": proc_name
-    })
 
 def process_image_to_bw_bytes(image_bytes):
     nparr = np.frombuffer(image_bytes, np.uint8)
@@ -144,6 +114,40 @@ def process_image_to_bw_bytes(image_bytes):
 
     _, png = cv2.imencode('.png', bw_final)
     return png.tobytes()
+
+@app.route('/')
+def index():
+    # מחזיר את index.html מהתיקייה frontend/templates
+    return render_template('index.html')
+
+@app.route('/api/upload', methods=['POST'])
+def api_upload():
+    f = request.files.get('file')
+    if not f:
+        return jsonify({"error": "no file uploaded"}), 400
+
+    raw = f.read()
+    fname = f.filename
+    save_path = UPLOADS / fname
+    with open(save_path, 'wb') as fh:
+        fh.write(raw)
+
+    try:
+        bw_bytes = process_image_to_bw_bytes(raw)
+    except Exception as e:
+        return jsonify({"error": f"processing error: {e}"}), 500
+
+    proc_name = f"proc_{fname}"
+    proc_path = UPLOADS / proc_name
+    with open(proc_path, 'wb') as fh:
+        fh.write(bw_bytes)
+
+    b64 = base64.b64encode(bw_bytes).decode('ascii')
+    return jsonify({
+        "processed_b64": f"data:image/png;base64,{b64}",
+        "uploaded_filename": fname,
+        "processed_filename": proc_name
+    })
 
 @app.route('/backend/save_crop', methods=['POST'])
 def api_save_crop():
@@ -202,11 +206,6 @@ def download_file(filename):
     if path.exists():
         return send_file(str(path), as_attachment=True, download_name=filename)
     return jsonify({"error": "file not found"}), 404
-
-# הוספת רוט סטטי לשירות קבצי glyphs
-@app.route('/glyphs/<path:filename>')
-def serve_glyphs(filename):
-    return send_from_directory(str(GLYPHS), filename)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=True)
