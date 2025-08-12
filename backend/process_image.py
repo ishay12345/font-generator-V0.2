@@ -1,7 +1,11 @@
+import os
 import cv2
 import numpy as np
+import shutil
 
-def convert_to_black_white(input_path, output_path):
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def convert_to_black_white(input_path, output_path, filename=None):
     """
     קורא תמונה, משפר ניגודיות, הופך אותה לשחור־לבן כך שהאותיות שחורות
     והרקע לבן על כל התמונה.
@@ -31,10 +35,18 @@ def convert_to_black_white(input_path, output_path):
     # שמירה
     cv2.imwrite(output_path, bw)
     print(f"[OK] BW image saved to: {output_path}")
+
+    # שמירה ל-static/uploads
+    if filename:
+        static_uploads = os.path.join(BASE_DIR, 'static', 'uploads')
+        os.makedirs(static_uploads, exist_ok=True)
+        shutil.copy(output_path, os.path.join(static_uploads, filename))
+        print(f"[OK] Copied to static/uploads/{filename}")
+
     return output_path
 
 
-def normalize_and_center_glyph(input_path, output_path, target_size=600, margin=50, vertical_offset=0):
+def normalize_and_center_glyph(input_path, output_path, filename=None, target_size=600, margin=50, vertical_offset=0):
     """
     קורא תמונה עם אותיות, מנרמל לגודל נתון ומרכז כך שהאותיות יהיו שחורות והרקע לבן.
     """
@@ -79,4 +91,13 @@ def normalize_and_center_glyph(input_path, output_path, target_size=600, margin=
     # שמירה
     cv2.imwrite(output_path, canvas)
     print(f"[OK] Normalized glyph saved to: {output_path}")
+
+    # שמירה ל-static/uploads
+    if filename:
+        static_uploads = os.path.join(BASE_DIR, 'static', 'uploads')
+        os.makedirs(static_uploads, exist_ok=True)
+        shutil.copy(output_path, os.path.join(static_uploads, filename))
+        print(f"[OK] Copied to static/uploads/{filename}")
+
     return output_path
+
