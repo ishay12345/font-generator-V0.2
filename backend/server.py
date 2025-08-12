@@ -17,8 +17,8 @@ STATIC_DIR = os.path.join(BASE_DIR, 'static')
 UPLOADS_DIR = os.path.join(STATIC_DIR, 'uploads')
 PROCESSED_DIR = os.path.join(STATIC_DIR, 'processed')
 GLYPHS_DIR = os.path.join(STATIC_DIR, 'glyphs')
-BW_DIR = os.path.join(STATIC_DIR, 'bw_letters')
-SVG_DIR = os.path.join(STATIC_DIR, 'svg_letters')
+BW_DIR = os.path.join(STATIC_DIR, 'bw')
+SVG_DIR = os.path.join(STATIC_DIR, 'svg')
 
 for d in (UPLOADS_DIR, PROCESSED_DIR, GLYPHS_DIR, BW_DIR, SVG_DIR):
     os.makedirs(d, exist_ok=True)
@@ -85,67 +85,76 @@ def crop():
 
 @app.route('/backend/save_crop', methods=['POST'])
 def save_crop():
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "no json"}), 400
-
-    name = data.get('name')
-    index = data.get('index')
-    imageData = data.get('data')
-
-    if not name or imageData is None:
-        return jsonify({"error": "missing fields"}), 400
+    logs = []
 
     try:
-        _, b64 = imageData.split(',', 1)
-        binary = base64.b64decode(b64)
-    except Exception:
-        return jsonify({"error": "invalid base64"}), 400
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "no json"}), 400
 
-    tmp_name = f"tmp_{index}_{name}.png"
-    tmp_path = os.path.join(PROCESSED_DIR, tmp_name)
-    with open(tmp_path, 'wb') as fh:
-        fh.write(binary)
+        name = data.get('name')
+        index = data.get('index')
+        imageData = data.get('data')
 
-    vertical = VERTICAL_OFFSETS.get(name, 0)
-    out_name = f"{index:02d}_{name}.png"
-    out_path = os.path.join(GLYPHS_DIR, out_name)
-    try:
-        normalize_and_center_glyph(tmp_path, out_path, target_size=600, margin=50, vertical_offset=vertical)
-    except Exception:
-        with open(out_path, 'wb') as fh:
+        if not name or imageData is None:
+            return jsonify({"error": "missing fields"}), 400
+
+        try:
+            _, b64 = imageData.split(',', 1)
+            binary = base64.b64decode(b64)
+        except Exception:
+            return jsonify({"error": "invalid base64"}), 400
+
+        tmp_name = f"tmp_{index}_{name}.png"
+        tmp_path = os.path.join(PROCESSED_DIR, tmp_name)
+        with open(tmp_path, 'wb') as fh:
             fh.write(binary)
 
-    files = sorted([f for f in os.listdir(GLYPHS_DIR) if f.lower().endswith('.png')])
+        vertical = VERTICAL_OFFSETS.get(name, 0)
+        out_name = f"{index:02d}_{name}.png"
+        out_path = os.path.join(GLYPHS_DIR, out_name)
+        try:
+            normalize_and_center_glyph(tmp_path, out_path, target_size=600, margin=50, vertical_offset=vertical)
+        except Exception:
+            with open(out_path, 'wb') as fh:
+                fh.write(binary)
 
-    # אם סיימנו את כל האותיות — להריץ המרות
-    if len(files) >= len(LETTERS_ORDER):
-        print("📢 כל 27 האותיות נשמרו — מתחיל המרות...")
-        
-        # שלב 1: הפעלה של bw_converter.py
-        for filename in files:
-            src_path = os.path.join(GLYPHS_DIR, filename)
-            dst_path = os.path.join(BW_DIR, filename)
-            print(f"➡️ ממיר לשחור-לבן: {filename}")
-            result = subprocess.run(["python", "bw_converter.py", src_path, dst_path], capture_output=True, text=True)
-            print(result.stdout)
-            if result.stderr:
-                print("⚠️ שגיאה:", result.stderr)
+        logs.append(f"✅ האות '{name}' נשמרה בהצלחה בשם {out_name}")
 
-        # שלב 2: הפעלה של svg_converter.py
-        for filename in os.listdir(BW_DIR):
-            if filename.lower().endswith(".png"):
-                src_path = os.path.join(BW_DIR, filename)
-                dst_svg = os.path.join(SVG_DIR, filename.replace(".png", ".svg"))
-                print(f"➡️ ממיר ל-SVG: {filename}")
-                result = subprocess.run(["python", "svg_converter.py", src_path, dst_svg], capture_output=True, text=True)
-                print(result.stdout)
+        files = sorted([f for f in os.listdir(GLYPHS_DIR) if f.lower().endswith('.png')])
+
+        # אם כל 27 האותיות נשמרו → הרצת ההמרות
+        if len(files) >= len(LETTERS_ORDER):
+            logs.append("📢 כל 27 האותיות נשמרו — מתחיל המרות...")
+
+            # שלב 1: הפעלה של bw_converter.py
+            for filename in files:
+                src_path = os.path.join(GLYPHS_DIR, filename)
+                dst_path = os.path.join(BW_DIR, filename)
+                logs.append(f"➡️ ממיר לשחור-לבן: {filename}")
+                result = subprocess.run(["python", "bw_converter.py", src_path, dst_path], capture_output=True, text=True)
+                logs.append(result.stdout)
                 if result.stderr:
-                    print("⚠️ שגיאה:", result.stderr)
+                    logs.append(f"⚠️ שגיאה: {result.stderr}")
 
-        print("✅ כל האותיות הומרו ל-SVG בהצלחה!")
+            # שלב 2: הפעלה של svg_converter.py
+            for filename in os.listdir(BW_DIR):
+                if filename.lower().endswith(".png"):
+                    src_path = os.path.join(BW_DIR, filename)
+                    dst_svg = os.path.join(SVG_DIR, filename.replace(".png", ".svg"))
+                    logs.append(f"➡️ ממיר ל-SVG: {filename}")
+                    result = subprocess.run(["python", "svg_converter.py", src_path, dst_svg], capture_output=True, text=True)
+                    logs.append(result.stdout)
+                    if result.stderr:
+                        logs.append(f"⚠️ שגיאה: {result.stderr}")
 
-    return jsonify({"saved": out_name, "files": files})
+            logs.append("✅ כל האותיות הומרו ל-SVG בהצלחה!")
+
+        return jsonify({"saved": out_name, "files": files, "logs": logs})
+
+    except Exception as e:
+        logs.append(f"❌ שגיאה כללית: {str(e)}")
+        return jsonify({"error": str(e), "logs": logs}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
