@@ -1,7 +1,8 @@
 import os
 import base64
 import shutil
-from flask import Flask, render_template, request, jsonify
+import subprocess
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 from werkzeug.utils import secure_filename
 from process_image import convert_to_black_white, normalize_and_center_glyph
 
@@ -16,8 +17,10 @@ STATIC_DIR = os.path.join(BASE_DIR, 'static')
 UPLOADS_DIR = os.path.join(STATIC_DIR, 'uploads')
 PROCESSED_DIR = os.path.join(STATIC_DIR, 'processed')
 GLYPHS_DIR = os.path.join(STATIC_DIR, 'glyphs')
+BW_DIR = os.path.join(STATIC_DIR, 'bw_letters')
+SVG_DIR = os.path.join(STATIC_DIR, 'svg_letters')
 
-for d in (UPLOADS_DIR, PROCESSED_DIR, GLYPHS_DIR):
+for d in (UPLOADS_DIR, PROCESSED_DIR, GLYPHS_DIR, BW_DIR, SVG_DIR):
     os.makedirs(d, exist_ok=True)
 
 # Flask
@@ -114,6 +117,34 @@ def save_crop():
             fh.write(binary)
 
     files = sorted([f for f in os.listdir(GLYPHS_DIR) if f.lower().endswith('.png')])
+
+    # אם סיימנו את כל האותיות — להריץ המרות
+    if len(files) >= len(LETTERS_ORDER):
+        print("📢 כל 27 האותיות נשמרו — מתחיל המרות...")
+        
+        # שלב 1: הפעלה של bw_converter.py
+        for filename in files:
+            src_path = os.path.join(GLYPHS_DIR, filename)
+            dst_path = os.path.join(BW_DIR, filename)
+            print(f"➡️ ממיר לשחור-לבן: {filename}")
+            result = subprocess.run(["python", "bw_converter.py", src_path, dst_path], capture_output=True, text=True)
+            print(result.stdout)
+            if result.stderr:
+                print("⚠️ שגיאה:", result.stderr)
+
+        # שלב 2: הפעלה של svg_converter.py
+        for filename in os.listdir(BW_DIR):
+            if filename.lower().endswith(".png"):
+                src_path = os.path.join(BW_DIR, filename)
+                dst_svg = os.path.join(SVG_DIR, filename.replace(".png", ".svg"))
+                print(f"➡️ ממיר ל-SVG: {filename}")
+                result = subprocess.run(["python", "svg_converter.py", src_path, dst_svg], capture_output=True, text=True)
+                print(result.stdout)
+                if result.stderr:
+                    print("⚠️ שגיאה:", result.stderr)
+
+        print("✅ כל האותיות הומרו ל-SVG בהצלחה!")
+
     return jsonify({"saved": out_name, "files": files})
 
 if __name__ == '__main__':
