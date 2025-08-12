@@ -1,6 +1,7 @@
 import os
 import base64
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+import shutil
+from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
 from process_image import convert_to_black_white, normalize_and_center_glyph
 
@@ -62,7 +63,13 @@ def upload():
     processed_path = os.path.join(PROCESSED_DIR, processed_name)
     convert_to_black_white(input_path, processed_path)
 
-    return redirect(url_for('crop', filename=processed_name))
+    # העתקה ל-static/uploads להצגה
+    static_uploads = os.path.join(BASE_DIR, 'static', 'uploads')
+    os.makedirs(static_uploads, exist_ok=True)
+    shutil.copy(processed_path, os.path.join(static_uploads, processed_name))
+
+    # חזרה לעמוד crop עם הנתונים
+    return render_template('crop.html', filename=processed_name)
 
 @app.route('/crop')
 def crop():
