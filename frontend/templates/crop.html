@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>חיתוך אותיות</title>
     <style>
         body { font-family: "Segoe UI", Roboto, Arial, sans-serif; background:#fff; color:#222; }
@@ -27,11 +27,54 @@
         .cropper-view-box {
             outline: 2px solid rgba(255,0,0,0.7) !important;
         }
+
+        /* מסך טעינה */
+        #loadingOverlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.9);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            color: #3498db;
+            font-weight: bold;
+        }
+
+        #progressBarContainer {
+            width: 80%;
+            max-width: 400px;
+            height: 20px;
+            background: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 15px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+        }
+
+        #progressBar {
+            height: 100%;
+            width: 0%;
+            background: #3498db;
+            border-radius: 10px 0 0 10px;
+            transition: width 0.3s ease;
+        }
     </style>
     <link href="https://unpkg.com/cropperjs/dist/cropper.min.css" rel="stylesheet"/>
 </head>
 <body>
     <h1>חיתוך אותיות</h1>
+
+    <!-- מסך טעינה -->
+    <div id="loadingOverlay">
+        <div>המתן לטעינת התמונה... <span id="loadingPercent">0%</span></div>
+        <div id="progressBarContainer">
+            <div id="progressBar"></div>
+        </div>
+    </div>
+
     <div class="controls">
         <button id="btn-save">שמור חיתוך</button>
         <button id="btn-next">אות הבאה</button>
@@ -41,8 +84,8 @@
 
     <div id="grid"></div>
 
-    <div style="max-width:600px;">
-        <img id="image" src="{{ url_for('static', filename='uploads/' + filename) }}" alt="תמונה לחיתוך" style="max-width:100%;">
+    <div style="max-width:600px; position: relative;">
+        <img id="image" src="{{ url_for('static', filename='uploads/' + filename) }}" alt="תמונה לחיתוך" style="max-width:100%; display:none;">
     </div>
 
     <h3>גליפים קיימים:</h3>
@@ -73,11 +116,16 @@
             }
 
             const imageEl = document.getElementById('image');
-            imageEl.onload = () => {
+
+            // להאזין לאירועי טעינה עם פס התקדמות
+            loadImageWithProgress(imageEl, '{{ url_for("static", filename="uploads/" + filename) }}').then(() => {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                imageEl.style.display = 'block';
+
                 if (cropper) cropper.destroy();
                 cropper = new Cropper(imageEl, {
                     viewMode: 1,
-                    autoCropArea: 0.35, // ריבוע בגודל 35% מהתמונה
+                    autoCropArea: 0.35,
                     background: false,
                     movable: true,
                     zoomable: true,
@@ -85,7 +133,7 @@
                     cropBoxResizable: true,
                     cropBoxMovable: true
                 });
-            };
+            });
 
             document.getElementById('btn-save').addEventListener('click', saveCrop);
             document.getElementById('btn-next').addEventListener('click', nextLetter);
@@ -94,6 +142,40 @@
 
             highlightCurrent();
             loadGlyphs();
+        }
+
+        // פונקציה לטעינת תמונה עם אירועי התקדמות
+        function loadImageWithProgress(imgElement, url) {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', url, true);
+                xhr.responseType = 'blob';
+
+                xhr.onprogress = function(e) {
+                    if (e.lengthComputable) {
+                        let percent = Math.round((e.loaded / e.total) * 100);
+                        document.getElementById('loadingPercent').textContent = percent + '%';
+                        document.getElementById('progressBar').style.width = percent + '%';
+                    }
+                };
+
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        const blob = xhr.response;
+                        const urlBlob = URL.createObjectURL(blob);
+                        imgElement.src = urlBlob;
+                        resolve();
+                    } else {
+                        reject('Failed to load image: ' + xhr.status);
+                    }
+                };
+
+                xhr.onerror = function() {
+                    reject('Network error while loading image');
+                };
+
+                xhr.send();
+            });
         }
 
         function saveCrop() {
