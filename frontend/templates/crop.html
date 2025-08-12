@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>חיתוך תמונה עם Canvas - חיתוך מיידי</title>
+<title>חיתוך תמונה עם Canvas - חיתוך סדרתי</title>
 <style>
   html, body {
     margin: 0; padding: 0; height: 100%;
@@ -22,6 +22,9 @@
     border: 1px solid #ccc;
     user-select: none;
     touch-action: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 
   #source-image {
@@ -50,7 +53,6 @@
     box-shadow: 0 0 20px rgba(231, 76, 60, 1);
   }
 
-  /* פינה להגדלה */
   #resize-handle {
     position: absolute;
     width: 20px;
@@ -81,11 +83,17 @@
   button:hover {
     background-color: #2980b9;
   }
+
+  #status {
+    margin-top: 10px;
+    font-weight: bold;
+    color: green;
+  }
 </style>
 </head>
 <body>
 
-<h1>חיתוך תמונה עם Canvas - מיידי ונוח</h1>
+<h1>חיתוך סדרתי של אותיות</h1>
 
 <div id="image-container">
   <img
@@ -94,41 +102,33 @@
     alt="תמונה לחיתוך"
     crossorigin="anonymous"
   />
-  <div id="crop-rectangle" tabindex="0" aria-label="ריבוע חיתוך">
-    <div id="resize-handle" aria-hidden="true"></div>
+  <div id="crop-rectangle" tabindex="0">
+    <div id="resize-handle"></div>
   </div>
 </div>
 
 <div id="controls">
-  <button id="save-crop">שמור חיתוך</button>
+  <button id="save-crop">שמור אות נוכחית</button>
 </div>
+<div id="status"></div>
 
 <script>
   const container = document.getElementById('image-container');
   const img = document.getElementById('source-image');
   const cropRect = document.getElementById('crop-rectangle');
   const resizeHandle = document.getElementById('resize-handle');
+  const statusEl = document.getElementById('status');
 
-  // הגדרות מינימום לחיתוך
   const minWidth = 50;
   const minHeight = 50;
-
-  // מצב גרירה
   let drag = false;
   let resize = false;
   let startX, startY;
   let origX, origY, origWidth, origHeight;
 
-  // פונקציה עזר למגבלות בתנועה
   function clamp(val, min, max) {
     return Math.min(Math.max(val, min), max);
   }
-
-  // התחלת גרירה או שינוי גודל
-  cropRect.addEventListener('mousedown', startDrag);
-  cropRect.addEventListener('touchstart', startDrag, { passive: false });
-  resizeHandle.addEventListener('mousedown', startResize);
-  resizeHandle.addEventListener('touchstart', startResize, { passive: false });
 
   function getEventPos(e) {
     if (e.touches && e.touches.length > 0) {
@@ -138,8 +138,13 @@
     }
   }
 
+  cropRect.addEventListener('mousedown', startDrag);
+  cropRect.addEventListener('touchstart', startDrag, { passive: false });
+  resizeHandle.addEventListener('mousedown', startResize);
+  resizeHandle.addEventListener('touchstart', startResize, { passive: false });
+
   function startDrag(e) {
-    if (e.target === resizeHandle) return; // לא לגרור כשמנסים להגדיל
+    if (e.target === resizeHandle) return;
     e.preventDefault();
     drag = true;
     const pos = getEventPos(e);
@@ -167,7 +172,6 @@
     let newLeft = origX + dx;
     let newTop = origY + dy;
 
-    // מגבלות - ריבוע חייב להישאר מעל התמונה
     newLeft = clamp(newLeft, imgRect.left, imgRect.right - cropRect.offsetWidth);
     newTop = clamp(newTop, imgRect.top, imgRect.bottom - cropRect.offsetHeight);
 
@@ -204,13 +208,11 @@
     const pos = getEventPos(e);
     const dx = pos.x - startX;
     const dy = pos.y - startY;
-
     const imgRect = img.getBoundingClientRect();
 
     let newWidth = origWidth + dx;
     let newHeight = origHeight + dy;
 
-    // מגבלות מינימום ומקסימום לפי התמונה
     newWidth = clamp(newWidth, minWidth, imgRect.right - cropRect.getBoundingClientRect().left);
     newHeight = clamp(newHeight, minHeight, imgRect.bottom - cropRect.getBoundingClientRect().top);
 
@@ -226,38 +228,46 @@
     window.removeEventListener('touchend', stopResize);
   }
 
-  // תפקוד כפתור שמירה
+  // רשימת האותיות
+  const letters = [
+    'alef','bet','gimel','dalet','he','vav','zayin','het','tet',
+    'yod','kaf','lamed','mem','nun','samekh','ayin','pe','tsadi',
+    'qof','resh','shin','tav','final_kaf','final_mem','final_nun',
+    'final_pe','final_tsadi'
+  ];
+  let currentIndex = 0;
+
   document.getElementById('save-crop').addEventListener('click', () => {
-    // מיקום וגודל החיתוך בתוך ה-container
+    if (!img.complete) {
+      alert('התמונה עדיין בטעינה, נסה שוב.');
+      return;
+    }
+
     const cropStyle = window.getComputedStyle(cropRect);
     const cropX = parseInt(cropStyle.left);
     const cropY = parseInt(cropStyle.top);
     const cropW = parseInt(cropStyle.width);
     const cropH = parseInt(cropStyle.height);
 
-    // יחס שינוי בין התמונה המוצגת לגודל המקורי
+    const imgRect = img.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+
     const scaleX = img.naturalWidth / img.width;
     const scaleY = img.naturalHeight / img.height;
 
-    // חישוב הקואורדינטות האמיתיות בתמונה המקורית
-    const realX = Math.round(cropX * scaleX);
-    const realY = Math.round(cropY * scaleY);
+    const realX = Math.round((cropX) * scaleX);
+    const realY = Math.round((cropY) * scaleY);
     const realW = Math.round(cropW * scaleX);
     const realH = Math.round(cropH * scaleY);
 
-    // יצירת canvas לחיתוך
     const canvas = document.createElement('canvas');
     canvas.width = realW;
     canvas.height = realH;
     const ctx = canvas.getContext('2d');
-
-    // ציור החלק הנחתך מהתמונה המקורית
     ctx.drawImage(img, realX, realY, realW, realH, 0, 0, realW, realH);
 
-    // הפיכת התמונה ל-Base64
     const croppedDataUrl = canvas.toDataURL('image/png');
 
-    // לשלוח לשרת (נתיב ופרמטרים לפי השרת שלך)
     fetch('/backend/save_crop', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -273,23 +283,17 @@
         alert('שגיאה בשמירה: ' + json.error);
         return;
       }
-      alert('התמונה נשמרה בהצלחה!');
-      // כאן אפשר לעדכן את ממשק המשתמש או לעבור לאות הבאה
+      statusEl.textContent = `✅ האות "${letters[currentIndex]}" נשמרה בהצלחה!`;
+      currentIndex++;
+      if (currentIndex >= letters.length) {
+        alert('🎉 כל האותיות נשמרו בהצלחה!');
+        currentIndex = 0;
+      }
     })
     .catch(err => {
       alert('שגיאה בשליחת התמונה: ' + err);
     });
   });
-
-  // רשימת האותיות ו-index נוכחי (ניתן להרחיב לניווט מלא)
-  const letters = [
-    'alef','bet','gimel','dalet','he','vav','zayin','het','tet',
-    'yod','kaf','lamed','mem','nun','samekh','ayin','pe','tsadi',
-    'qof','resh','shin','tav','final_kaf','final_mem','final_nun',
-    'final_pe','final_tsadi'
-  ];
-  let currentIndex = 0;
-
 </script>
 
 </body>
