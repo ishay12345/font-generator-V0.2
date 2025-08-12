@@ -1,14 +1,23 @@
+<!-- templates/index.html -->
 <!DOCTYPE html>
-<html lang="he">
+<html lang="he" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <title>העלאת תמונה</title>
+  <meta charset="utf-8">
+  <title>העלאת דף כתב יד</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body style="font-family: Arial; text-align: center; padding-top: 50px;">
+<body>
+  <main class="container">
     <h1>העלה דף כתב יד</h1>
     <form action="/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="file" required>
-        <button type="submit">העלה</button>
+      <label class="btn">
+        בחר תמונה
+        <input type="file" name="image" accept="image/*" required>
+      </label>
+      <button class="btn primary" type="submit">העלה ועבד</button>
     </form>
+
+    <p class="note">לאחר העלאה התמונה תעובד לשחור-לבן ותועבר לכלי החיתוך.</p>
+  </main>
 </body>
 </html>
