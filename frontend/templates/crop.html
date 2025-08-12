@@ -18,6 +18,15 @@
         #grid { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:15px; }
         button { padding:6px 12px; border:none; background:#3498db; color:#fff; border-radius:4px; cursor:pointer; }
         button:hover { background:#2980b9; }
+
+        /* עיצוב מיוחד לריבוע החיתוך */
+        .cropper-crop-box {
+            border: 3px dashed #ff0000 !important;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5) !important;
+        }
+        .cropper-view-box {
+            outline: 2px solid rgba(255,0,0,0.7) !important;
+        }
     </style>
     <link href="https://unpkg.com/cropperjs/dist/cropper.min.css" rel="stylesheet"/>
 </head>
@@ -68,8 +77,13 @@
                 if (cropper) cropper.destroy();
                 cropper = new Cropper(imageEl, {
                     viewMode: 1,
-                    autoCropArea: 0.35,
+                    autoCropArea: 0.35, // ריבוע בגודל 35% מהתמונה
                     background: false,
+                    movable: true,
+                    zoomable: true,
+                    scalable: true,
+                    cropBoxResizable: true,
+                    cropBoxMovable: true
                 });
             };
 
