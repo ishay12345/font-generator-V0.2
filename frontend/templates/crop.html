@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>חיתוך אותיות</title>
     <style>
-        /* CSS שהבאת */
         body { font-family: "Segoe UI", Roboto, Arial, sans-serif; background:#fff; color:#222; }
         .controls { margin-bottom:12px; display:flex; gap:8px; align-items:center; }
         .left, .right { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -20,7 +19,6 @@
         button { padding:6px 12px; border:none; background:#3498db; color:#fff; border-radius:4px; cursor:pointer; }
         button:hover { background:#2980b9; }
     </style>
-    <!-- Cropper.js CSS -->
     <link href="https://unpkg.com/cropperjs/dist/cropper.min.css" rel="stylesheet"/>
 </head>
 <body>
@@ -35,17 +33,15 @@
     <div id="grid"></div>
 
     <div style="max-width:600px;">
-        <img id="image" src="{{ IMAGE_URL }}" alt="תמונה לחיתוך" style="max-width:100%;">
+        <img id="image" src="{{ url_for('static', filename='uploads/' + filename) }}" alt="תמונה לחיתוך" style="max-width:100%;">
     </div>
 
     <h3>גליפים קיימים:</h3>
     <div id="glyphs" class="thumbs"></div>
 
-    <!-- Cropper.js -->
     <script src="https://unpkg.com/cropperjs"></script>
 
     <script>
-        /* JavaScript שהבאת (מותאם) */
         let cropper = null;
         let currentIndex = 0;
 
@@ -104,7 +100,7 @@
                     alert('שגיאה בשמירה: ' + json.error);
                     return;
                 }
-                const cell = document.querySelector(\`.cell[data-index="\${index}"]\`);
+                const cell = document.querySelector(`.cell[data-index="${index}"]`);
                 if (cell) {
                     cell.innerHTML = '';
                     const img = document.createElement('img');
@@ -128,7 +124,7 @@
 
         function highlightCurrent() {
             document.querySelectorAll('.cell').forEach(el => el.style.borderColor = '#ddd');
-            const cur = document.querySelector(\`.cell[data-index="\${currentIndex}"]\`);
+            const cur = document.querySelector(`.cell[data-index="${currentIndex}"]`);
             if (cur) cur.style.borderColor = '#3498db';
         }
 
