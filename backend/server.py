@@ -71,7 +71,6 @@ def upload():
     os.makedirs(static_uploads, exist_ok=True)
     shutil.copy(processed_path, os.path.join(static_uploads, processed_name))
 
-    # חזרה לעמוד crop עם הנתונים
     return render_template('crop.html', filename=processed_name)
 
 @app.route('/crop')
@@ -123,30 +122,27 @@ def save_crop():
 
         files = sorted([f for f in os.listdir(GLYPHS_DIR) if f.lower().endswith('.png')])
 
-        # אם כל 27 האותיות נשמרו → הרצת ההמרות
+        # אם כל 27 האותיות נשמרו → המרה מלאה
         if len(files) >= len(LETTERS_ORDER):
             logs.append("📢 כל 27 האותיות נשמרו — מתחיל המרות...")
 
-            # שלב 1: הפעלה של bw_converter.py
-            for filename in files:
-                src_path = os.path.join(GLYPHS_DIR, filename)
-                dst_path = os.path.join(BW_DIR, filename)
-                logs.append(f"➡️ ממיר לשחור-לבן: {filename}")
-                result = subprocess.run(["python", "bw_converter.py", src_path, dst_path], capture_output=True, text=True)
-                logs.append(result.stdout)
-                if result.stderr:
-                    logs.append(f"⚠️ שגיאה: {result.stderr}")
+            # המרה לשחור-לבן (תיקייה שלמה)
+            result_bw = subprocess.run(
+                ["python", "bw_converter.py", GLYPHS_DIR, BW_DIR],
+                capture_output=True, text=True
+            )
+            logs.append(result_bw.stdout)
+            if result_bw.stderr:
+                logs.append(f"⚠️ שגיאה BW: {result_bw.stderr}")
 
-            # שלב 2: הפעלה של svg_converter.py
-            for filename in os.listdir(BW_DIR):
-                if filename.lower().endswith(".png"):
-                    src_path = os.path.join(BW_DIR, filename)
-                    dst_svg = os.path.join(SVG_DIR, filename.replace(".png", ".svg"))
-                    logs.append(f"➡️ ממיר ל-SVG: {filename}")
-                    result = subprocess.run(["python", "svg_converter.py", src_path, dst_svg], capture_output=True, text=True)
-                    logs.append(result.stdout)
-                    if result.stderr:
-                        logs.append(f"⚠️ שגיאה: {result.stderr}")
+            # המרה ל-SVG (תיקייה שלמה)
+            result_svg = subprocess.run(
+                ["python", "svg_converter.py", BW_DIR, SVG_DIR],
+                capture_output=True, text=True
+            )
+            logs.append(result_svg.stdout)
+            if result_svg.stderr:
+                logs.append(f"⚠️ שגיאה SVG: {result_svg.stderr}")
 
             logs.append("✅ כל האותיות הומרו ל-SVG בהצלחה!")
 
