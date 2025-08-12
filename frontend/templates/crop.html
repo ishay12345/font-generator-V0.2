@@ -1,157 +1,287 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <title>חיתוך אותיות - ביצועים משופרים</title>
-  <style>
-    body {
-      font-family: "Segoe UI", Roboto, Arial, sans-serif;
-      background: #fff;
-      color: #222;
-      padding: 20px;
-    }
-    .controls {
-      margin-bottom: 12px;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    button {
-      padding: 6px 12px;
-      border: none;
-      background: #3498db;
-      color: #fff;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-    button:hover {
-      background: #2980b9;
-    }
-    #grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      margin-bottom: 15px;
-    }
-    .cell {
-      width: 80px;
-      height: 80px;
-      border: 1px solid #ddd;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      text-align: center;
-      user-select: none;
-      cursor: pointer;
-      position: relative;
-      background: #fafafa;
-      transition: border-color 0.3s ease;
-    }
-    .cell.selected {
-      border-color: #3498db;
-      box-shadow: 0 0 5px #3498db;
-    }
-    #image-container {
-      max-width: 600px;
-      max-height: 600px;
-      margin-bottom: 20px;
-      position: relative;
-      border: 1px solid #ccc;
-      background: #fefefe;
-    }
-    #image {
-      max-width: 100%;
-      display: block;
-      user-select: none;
-      -webkit-user-drag: none;
-    }
-    #glyphs {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      min-height: 60px;
-      border: 1px solid #ccc;
-      padding: 10px;
-      background: #fefefe;
-    }
-    .glyph-card {
-      width: 100px;
-      height: 100px;
-      border: 1px solid #ccc;
-      padding: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: white;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    }
-    .glyph-card img {
-      max-width: 100%;
-      max-height: 100%;
-      display: block;
-    }
-    #loadingOverlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(255,255,255,0.9);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 18px;
-      z-index: 9999;
-      flex-direction: column;
-    }
-    #progressBarContainer {
-      width: 300px;
-      height: 20px;
-      background: #ddd;
-      border-radius: 10px;
-      overflow: hidden;
-      margin-top: 10px;
-    }
-    #progressBar {
-      height: 100%;
-      width: 0%;
-      background: #3498db;
-      transition: width 0.2s ease;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>חיתוך תמונה עם Canvas - חיתוך מיידי</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background: #fff; color: #222;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
 
-  <link href="https://unpkg.com/cropperjs/dist/cropper.min.css" rel="stylesheet" />
+  #image-container {
+    position: relative;
+    max-width: 90vw;
+    max-height: 70vh;
+    border: 1px solid #ccc;
+    user-select: none;
+    touch-action: none;
+  }
+
+  #source-image {
+    display: block;
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+  }
+
+  #crop-rectangle {
+    position: absolute;
+    border: 3px dashed #e74c3c;
+    background: rgba(231, 76, 60, 0.15);
+    top: 40px;
+    left: 40px;
+    width: 180px;
+    height: 180px;
+    box-sizing: border-box;
+    cursor: move;
+    touch-action: none;
+    border-radius: 8px;
+    box-shadow: 0 0 12px rgba(231, 76, 60, 0.7);
+    transition: box-shadow 0.3s ease;
+  }
+  #crop-rectangle:active {
+    box-shadow: 0 0 20px rgba(231, 76, 60, 1);
+  }
+
+  /* פינה להגדלה */
+  #resize-handle {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    right: -10px;
+    bottom: -10px;
+    background: #e74c3c;
+    border-radius: 50%;
+    cursor: nwse-resize;
+    box-shadow: 0 0 8px rgba(231, 76, 60, 0.9);
+  }
+
+  #controls {
+    margin-top: 15px;
+  }
+
+  button {
+    padding: 10px 18px;
+    margin: 0 6px;
+    background-color: #3498db;
+    border: none;
+    color: white;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.25s ease;
+  }
+  button:hover {
+    background-color: #2980b9;
+  }
+</style>
 </head>
 <body>
 
-<div id="loadingOverlay">
-  טוען תמונה... <span id="loadingPercent">0%</span>
-  <div id="progressBarContainer">
-    <div id="progressBar"></div>
+<h1>חיתוך תמונה עם Canvas - מיידי ונוח</h1>
+
+<div id="image-container">
+  <img
+    id="source-image"
+    src="{{ url_for('static', filename='uploads/' + filename) }}"
+    alt="תמונה לחיתוך"
+    crossorigin="anonymous"
+  />
+  <div id="crop-rectangle" tabindex="0" aria-label="ריבוע חיתוך">
+    <div id="resize-handle" aria-hidden="true"></div>
   </div>
 </div>
 
-<h1>חיתוך אותיות - ביצועים משופרים</h1>
-
-<div class="controls">
-  <button id="btn-save">שמור חיתוך</button>
-  <button id="btn-next">אות הבאה</button>
-  <button id="btn-list">רשימת גליפים</button>
-  <button id="btn-finish">סיים וייצר פונט</button>
+<div id="controls">
+  <button id="save-crop">שמור חיתוך</button>
 </div>
 
-<div id="grid"></div>
-
-<div id="image-container">
-  <!-- נטעין פה את התמונה דינמית ב-JS -->
-  <img id="image" alt="תמונה לחיתוך" />
-</div>
-
-<h3>גליפים קיימים:</h3>
-<div id="glyphs"></div>
-
-<script src="https://unpkg.com/cropperjs/dist/cropper.min.js"></script>
 <script>
+  const container = document.getElementById('image-container');
+  const img = document.getElementById('source-image');
+  const cropRect = document.getElementById('crop-rectangle');
+  const resizeHandle = document.getElementById('resize-handle');
+
+  // הגדרות מינימום לחיתוך
+  const minWidth = 50;
+  const minHeight = 50;
+
+  // מצב גרירה
+  let drag = false;
+  let resize = false;
+  let startX, startY;
+  let origX, origY, origWidth, origHeight;
+
+  // פונקציה עזר למגבלות בתנועה
+  function clamp(val, min, max) {
+    return Math.min(Math.max(val, min), max);
+  }
+
+  // התחלת גרירה או שינוי גודל
+  cropRect.addEventListener('mousedown', startDrag);
+  cropRect.addEventListener('touchstart', startDrag, { passive: false });
+  resizeHandle.addEventListener('mousedown', startResize);
+  resizeHandle.addEventListener('touchstart', startResize, { passive: false });
+
+  function getEventPos(e) {
+    if (e.touches && e.touches.length > 0) {
+      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    } else {
+      return { x: e.clientX, y: e.clientY };
+    }
+  }
+
+  function startDrag(e) {
+    if (e.target === resizeHandle) return; // לא לגרור כשמנסים להגדיל
+    e.preventDefault();
+    drag = true;
+    const pos = getEventPos(e);
+    startX = pos.x;
+    startY = pos.y;
+    const rect = cropRect.getBoundingClientRect();
+    origX = rect.left;
+    origY = rect.top;
+    window.addEventListener('mousemove', onDrag);
+    window.addEventListener('touchmove', onDrag, { passive: false });
+    window.addEventListener('mouseup', stopDrag);
+    window.addEventListener('touchend', stopDrag);
+  }
+
+  function onDrag(e) {
+    if (!drag) return;
+    e.preventDefault();
+    const pos = getEventPos(e);
+    const dx = pos.x - startX;
+    const dy = pos.y - startY;
+
+    const containerRect = container.getBoundingClientRect();
+    const imgRect = img.getBoundingClientRect();
+
+    let newLeft = origX + dx;
+    let newTop = origY + dy;
+
+    // מגבלות - ריבוע חייב להישאר מעל התמונה
+    newLeft = clamp(newLeft, imgRect.left, imgRect.right - cropRect.offsetWidth);
+    newTop = clamp(newTop, imgRect.top, imgRect.bottom - cropRect.offsetHeight);
+
+    cropRect.style.left = (newLeft - containerRect.left) + 'px';
+    cropRect.style.top = (newTop - containerRect.top) + 'px';
+  }
+
+  function stopDrag() {
+    drag = false;
+    window.removeEventListener('mousemove', onDrag);
+    window.removeEventListener('touchmove', onDrag);
+    window.removeEventListener('mouseup', stopDrag);
+    window.removeEventListener('touchend', stopDrag);
+  }
+
+  function startResize(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    resize = true;
+    const pos = getEventPos(e);
+    startX = pos.x;
+    startY = pos.y;
+    origWidth = cropRect.offsetWidth;
+    origHeight = cropRect.offsetHeight;
+    window.addEventListener('mousemove', onResize);
+    window.addEventListener('touchmove', onResize, { passive: false });
+    window.addEventListener('mouseup', stopResize);
+    window.addEventListener('touchend', stopResize);
+  }
+
+  function onResize(e) {
+    if (!resize) return;
+    e.preventDefault();
+    const pos = getEventPos(e);
+    const dx = pos.x - startX;
+    const dy = pos.y - startY;
+
+    const imgRect = img.getBoundingClientRect();
+
+    let newWidth = origWidth + dx;
+    let newHeight = origHeight + dy;
+
+    // מגבלות מינימום ומקסימום לפי התמונה
+    newWidth = clamp(newWidth, minWidth, imgRect.right - cropRect.getBoundingClientRect().left);
+    newHeight = clamp(newHeight, minHeight, imgRect.bottom - cropRect.getBoundingClientRect().top);
+
+    cropRect.style.width = newWidth + 'px';
+    cropRect.style.height = newHeight + 'px';
+  }
+
+  function stopResize() {
+    resize = false;
+    window.removeEventListener('mousemove', onResize);
+    window.removeEventListener('touchmove', onResize);
+    window.removeEventListener('mouseup', stopResize);
+    window.removeEventListener('touchend', stopResize);
+  }
+
+  // תפקוד כפתור שמירה
+  document.getElementById('save-crop').addEventListener('click', () => {
+    // מיקום וגודל החיתוך בתוך ה-container
+    const cropStyle = window.getComputedStyle(cropRect);
+    const cropX = parseInt(cropStyle.left);
+    const cropY = parseInt(cropStyle.top);
+    const cropW = parseInt(cropStyle.width);
+    const cropH = parseInt(cropStyle.height);
+
+    // יחס שינוי בין התמונה המוצגת לגודל המקורי
+    const scaleX = img.naturalWidth / img.width;
+    const scaleY = img.naturalHeight / img.height;
+
+    // חישוב הקואורדינטות האמיתיות בתמונה המקורית
+    const realX = Math.round(cropX * scaleX);
+    const realY = Math.round(cropY * scaleY);
+    const realW = Math.round(cropW * scaleX);
+    const realH = Math.round(cropH * scaleY);
+
+    // יצירת canvas לחיתוך
+    const canvas = document.createElement('canvas');
+    canvas.width = realW;
+    canvas.height = realH;
+    const ctx = canvas.getContext('2d');
+
+    // ציור החלק הנחתך מהתמונה המקורית
+    ctx.drawImage(img, realX, realY, realW, realH, 0, 0, realW, realH);
+
+    // הפיכת התמונה ל-Base64
+    const croppedDataUrl = canvas.toDataURL('image/png');
+
+    // לשלוח לשרת (נתיב ופרמטרים לפי השרת שלך)
+    fetch('/backend/save_crop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: letters[currentIndex],
+        index: currentIndex,
+        data: croppedDataUrl
+      })
+    })
+    .then(res => res.json())
+    .then(json => {
+      if(json.error) {
+        alert('שגיאה בשמירה: ' + json.error);
+        return;
+      }
+      alert('התמונה נשמרה בהצלחה!');
+      // כאן אפשר לעדכן את ממשק המשתמש או לעבור לאות הבאה
+    })
+    .catch(err => {
+      alert('שגיאה בשליחת התמונה: ' + err);
+    });
+  });
+
+  // רשימת האותיות ו-index נוכחי (ניתן להרחיב לניווט מלא)
   const letters = [
     'alef','bet','gimel','dalet','he','vav','zayin','het','tet',
     'yod','kaf','lamed','mem','nun','samekh','ayin','pe','tsadi',
@@ -159,206 +289,7 @@
     'final_pe','final_tsadi'
   ];
   let currentIndex = 0;
-  let cropper = null;
 
-  const loadingOverlay = document.getElementById('loadingOverlay');
-  const loadingPercent = document.getElementById('loadingPercent');
-  const progressBar = document.getElementById('progressBar');
-  const image = document.getElementById('image');
-
-  // יצירת רשת האותיות
-  function createGrid() {
-    const grid = document.getElementById('grid');
-    grid.innerHTML = '';
-    letters.forEach((letter, i) => {
-      const div = document.createElement('div');
-      div.className = 'cell';
-      div.textContent = letter;
-      div.dataset.index = i;
-      div.dataset.letter = letter;
-      div.addEventListener('click', () => {
-        currentIndex = i;
-        updateSelection();
-      });
-      grid.appendChild(div);
-    });
-    updateSelection();
-  }
-
-  function updateSelection() {
-    document.querySelectorAll('.cell').forEach(el => el.classList.remove('selected'));
-    const selected = document.querySelector(`.cell[data-index="${currentIndex}"]`);
-    if (selected) selected.classList.add('selected');
-  }
-
-  // פונקציה להורדת תמונה והקטנתה ל-800px רוחב לפני הטעינה
-  function loadAndResizeImage(url, maxWidth = 800) {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', url, true);
-      xhr.responseType = 'blob';
-
-      xhr.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const percent = Math.round((event.loaded / event.total) * 100);
-          loadingPercent.textContent = percent + '%';
-          progressBar.style.width = percent + '%';
-        }
-      };
-
-      xhr.onload = () => {
-        if (xhr.status === 200) {
-          const blob = xhr.response;
-          const img = new Image();
-          const imgURL = URL.createObjectURL(blob);
-
-          img.onload = () => {
-            // יצירת canvas להקטנת התמונה
-            const canvas = document.createElement('canvas');
-            const scale = Math.min(1, maxWidth / img.width);
-            canvas.width = img.width * scale;
-            canvas.height = img.height * scale;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob((resizedBlob) => {
-              const resizedUrl = URL.createObjectURL(resizedBlob);
-              URL.revokeObjectURL(imgURL);
-              resolve(resizedUrl);
-            }, 'image/jpeg', 0.85);
-          };
-
-          img.onerror = () => reject(new Error('שגיאה בטעינת התמונה למטרה'));
-          img.src = imgURL;
-        } else {
-          reject(new Error('שגיאה בטעינת התמונה מהשרת'));
-        }
-      };
-
-      xhr.onerror = () => reject(new Error('שגיאה ברשת בזמן טעינת התמונה'));
-      xhr.send();
-    });
-  }
-
-  // אתחול ה-Cropper עם ביצועים טובים
-  function initCropper() {
-    if (cropper) cropper.destroy();
-    cropper = new Cropper(image, {
-      viewMode: 1,
-      autoCropArea: 0.3,
-      movable: true,
-      zoomable: true,
-      scalable: false,
-      cropBoxResizable: true,
-      cropBoxMovable: true,
-      background: false,
-      checkOrientation: false,
-      modal: true
-    });
-  }
-
-  // שמירת החיתוך עם שליחה לשרת
-  function saveCrop() {
-    if (!cropper) {
-      alert('המתן לטעינת התמונה והפעלת כלי החיתוך');
-      return;
-    }
-    const canvasCropped = cropper.getCroppedCanvas();
-    if (!canvasCropped) {
-      alert('לא ניתן לקבל את החיתוך');
-      return;
-    }
-    const dataURL = canvasCropped.toDataURL('image/png');
-    const name = letters[currentIndex];
-    const index = currentIndex;
-
-    fetch('/backend/save_crop', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ name, index, data: dataURL })
-    })
-    .then(res => res.json())
-    .then(json => {
-      if (json.error) {
-        alert('שגיאה בשמירה: ' + json.error);
-        return;
-      }
-      // הצגת התמונה החתוכה בתא של האות
-      const cell = document.querySelector(`.cell[data-index="${index}"]`);
-      if (cell) {
-        cell.innerHTML = '';
-        const img = document.createElement('img');
-        img.src = dataURL;
-        img.style.maxWidth = '100%';
-        img.style.maxHeight = '100%';
-        cell.appendChild(img);
-      }
-      loadGlyphs();
-      nextLetter();
-    })
-    .catch(err => alert('שגיאה ברשת: ' + err));
-  }
-
-  function nextLetter() {
-    currentIndex = Math.min(currentIndex + 1, letters.length - 1);
-    updateSelection();
-  }
-
-  // טעינת הגליפים מהשרת
-  function loadGlyphs() {
-    fetch('/api/list_glyphs').then(res => res.json()).then(json => {
-      const area = document.getElementById('glyphs');
-      area.innerHTML = '';
-      if (json.files && json.files.length) {
-        json.files.forEach(fn => {
-          const c = document.createElement('div');
-          c.className = 'glyph-card';
-          const img = document.createElement('img');
-          img.src = '/static/glyphs/' + fn;
-          c.appendChild(img);
-          area.appendChild(c);
-        });
-      }
-    });
-  }
-
-  function finalizeFont() {
-    if (!confirm('לייצר פונט מהגליפים הנוכחיים?')) return;
-    fetch('/api/finalize', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: '{}'
-    })
-    .then(res => res.json())
-    .then(json => {
-      if (json.error) alert('שגיאה ביצירת הפונט: ' + json.error);
-      else alert('הפונט נוצר: ' + (json.ttf || 'קובץ פונט'));
-    });
-  }
-
-  // אתחול כל המערכת
-  document.addEventListener('DOMContentLoaded', async () => {
-    createGrid();
-
-    try {
-      const imageUrl = "{{ url_for('static', filename='uploads/' + filename) }}"; // החלף עם הנתיב הנכון מהשרת
-      const resizedUrl = await loadAndResizeImage(imageUrl);
-      loadingOverlay.style.display = 'none';
-      image.src = resizedUrl;
-      image.onload = () => {
-        initCropper();
-      };
-    } catch(e) {
-      alert('שגיאה בטעינת התמונה: ' + e.message);
-      loadingOverlay.style.display = 'none';
-    }
-
-    document.getElementById('btn-save').addEventListener('click', saveCrop);
-    document.getElementById('btn-next').addEventListener('click', nextLetter);
-    document.getElementById('btn-list').addEventListener('click', loadGlyphs);
-    document.getElementById('btn-finish').addEventListener('click', finalizeFont);
-
-    loadGlyphs();
-  });
 </script>
 
 </body>
