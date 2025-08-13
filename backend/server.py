@@ -6,7 +6,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 from werkzeug.utils import secure_filename
 from process_image import convert_to_black_white, normalize_and_center_glyph
 
-# בסיס פרויקט (דינמי)
+# בסיס פרויקט
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # נתיבי תבניות וסטטיים
@@ -19,10 +19,8 @@ PROCESSED_DIR = os.path.join(STATIC_DIR, 'processed')
 GLYPHS_DIR = os.path.join(STATIC_DIR, 'glyphs')
 BW_DIR = os.path.join(STATIC_DIR, 'bw')
 SVG_DIR = os.path.join(STATIC_DIR, 'svg')
-FONT_OUTPUT = os.path.join(STATIC_DIR, 'fonts', 'generated_font.ttf')
 
-# יצירת כל התיקיות
-for d in (UPLOADS_DIR, PROCESSED_DIR, GLYPHS_DIR, BW_DIR, SVG_DIR, os.path.dirname(FONT_OUTPUT)):
+for d in (UPLOADS_DIR, PROCESSED_DIR, GLYPHS_DIR, BW_DIR, SVG_DIR):
     os.makedirs(d, exist_ok=True)
 
 # Flask
@@ -46,52 +44,34 @@ VERTICAL_OFFSETS = {
     "final_tsadi": 50
 }
 
-# ------------------------
-# טיפול כללי בשגיאות כדי למנוע HTML לא צפוי
-# ------------------------
-@app.errorhandler(Exception)
-def handle_exception(e):
-    return jsonify({
-        "error": str(e),
-        "logs": [f"❌ שגיאה כללית: {str(e)}"]
-    }), 500
-
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
 def upload():
-    logs = []
-    try:
-        if 'image' not in request.files:
-            return jsonify({"error": "לא נשלח קובץ", "logs": logs}), 400
+    if 'image' not in request.files:
+        return render_template('index.html', error='לא נשלח קובץ')
 
-        f = request.files['image']
-        if f.filename == '':
-            return jsonify({"error": "לא נבחר קובץ", "logs": logs}), 400
+    f = request.files['image']
+    if f.filename == '':
+        return render_template('index.html', error='לא נבחר קובץ')
 
-        filename = secure_filename(f.filename)
-        input_path = os.path.join(UPLOADS_DIR, filename)
-        f.save(input_path)
-        logs.append(f"📥 הקובץ {filename} נשמר בהצלחה")
+    filename = secure_filename(f.filename)
+    input_path = os.path.join(UPLOADS_DIR, filename)
+    f.save(input_path)
 
-        # המרה לשחור-לבן
-        processed_name = f"proc_{filename}"
-        processed_path = os.path.join(PROCESSED_DIR, processed_name)
-        convert_to_black_white(input_path, processed_path)
-        logs.append(f"🎨 התמונה הומרה לשחור-לבן: {processed_name}")
+    # המרה לשחור-לבן
+    processed_name = f"proc_{filename}"
+    processed_path = os.path.join(PROCESSED_DIR, processed_name)
+    convert_to_black_white(input_path, processed_path)
 
-        # העתקה להצגה
-        shutil.copy(processed_path, os.path.join(UPLOADS_DIR, processed_name))
+    # העתקה ל-static/uploads להצגה
+    static_uploads = os.path.join(BASE_DIR, 'static', 'uploads')
+    os.makedirs(static_uploads, exist_ok=True)
+    shutil.copy(processed_path, os.path.join(static_uploads, processed_name))
 
-        return jsonify({
-            "processed_file": processed_name,
-            "logs": logs
-        })
-    except Exception as e:
-        logs.append(f"❌ שגיאה בהעלאת קובץ: {str(e)}")
-        return jsonify({"error": str(e), "logs": logs}), 500
+    return render_template('crop.html', filename=processed_name)
 
 @app.route('/crop')
 def crop():
@@ -105,73 +85,74 @@ def crop():
 @app.route('/backend/save_crop', methods=['POST'])
 def save_crop():
     logs = []
+
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json()
         if not data:
-            return jsonify({"error": "לא התקבל JSON תקין", "logs": logs}), 400
+            return jsonify({"error": "no json"}), 400
 
         name = data.get('name')
         index = data.get('index')
         imageData = data.get('data')
 
-        if name is None or imageData is None or index is None:
-            return jsonify({"error": "חסרים שדות בנתונים", "logs": logs}), 400
+        if not name or imageData is None:
+            return jsonify({"error": "missing fields"}), 400
 
         try:
             _, b64 = imageData.split(',', 1)
             binary = base64.b64decode(b64)
         except Exception:
-            return jsonify({"error": "Base64 לא תקין", "logs": logs}), 400
+            return jsonify({"error": "invalid base64"}), 400
 
-        tmp_path = os.path.join(PROCESSED_DIR, f"tmp_{index}_{name}.png")
+        tmp_name = f"tmp_{index}_{name}.png"
+        tmp_path = os.path.join(PROCESSED_DIR, tmp_name)
         with open(tmp_path, 'wb') as fh:
             fh.write(binary)
 
-        out_path = os.path.join(GLYPHS_DIR, f"{int(index):02d}_{name}.png")
         vertical = VERTICAL_OFFSETS.get(name, 0)
-
+        out_name = f"{index:02d}_{name}.png"
+        out_path = os.path.join(GLYPHS_DIR, out_name)
         try:
             normalize_and_center_glyph(tmp_path, out_path, target_size=600, margin=50, vertical_offset=vertical)
         except Exception:
-            shutil.copy(tmp_path, out_path)
+            with open(out_path, 'wb') as fh:
+                fh.write(binary)
 
-        logs.append(f"✅ האות '{name}' נשמרה בשם {os.path.basename(out_path)}")
+        logs.append(f"✅ האות '{name}' נשמרה בהצלחה בשם {out_name}")
 
-        # ניקוי רשימת הקבצים רק ל-PNG
         files = sorted([f for f in os.listdir(GLYPHS_DIR) if f.lower().endswith('.png')])
 
-        # ספירת אינדקסים בפועל (00 עד 26 = 27 אותיות)
-        indexes_found = {int(f.split('_')[0]) for f in files if f.split('_')[0].isdigit()}
-        if all(i in indexes_found for i in range(27)):  
-            logs.append("📢 כל 27 האותיות קיימות — מתחיל המרה...")
+        # אם כל 27 האותיות נשמרו → המרה מלאה
+        if len(files) >= len(LETTERS_ORDER):
+            logs.append("📢 כל 27 האותיות נשמרו — מתחיל המרות...")
 
-            # המרה BW
-            result_bw = subprocess.run(["python", "bw_converter.py", GLYPHS_DIR, BW_DIR], capture_output=True, text=True)
+            # המרה לשחור-לבן (תיקייה שלמה)
+            result_bw = subprocess.run(
+                ["python", "bw_converter.py", GLYPHS_DIR, BW_DIR],
+                capture_output=True, text=True
+            )
             logs.append(result_bw.stdout)
-            if result_bw.stderr.strip():
-                logs.append(f"⚠️ שגיאת BW: {result_bw.stderr}")
+            if result_bw.stderr:
+                logs.append(f"⚠️ שגיאה BW: {result_bw.stderr}")
 
-            # המרה SVG
-            result_svg = subprocess.run(["python", "svg_converter.py", BW_DIR, SVG_DIR], capture_output=True, text=True)
+            # המרה ל-SVG (תיקייה שלמה)
+            result_svg = subprocess.run(
+                ["python", "svg_converter.py", BW_DIR, SVG_DIR],
+                capture_output=True, text=True
+            )
             logs.append(result_svg.stdout)
-            if result_svg.stderr.strip():
-                logs.append(f"⚠️ שגיאת SVG: {result_svg.stderr}")
+            if result_svg.stderr:
+                logs.append(f"⚠️ שגיאה SVG: {result_svg.stderr}")
 
-            # יצירת פונט
-            logs.append("📢 מתחיל יצירת פונט...")
-            result_font = subprocess.run(["python", "generate_font.py", SVG_DIR, FONT_OUTPUT], capture_output=True, text=True)
-            logs.append(result_font.stdout)
-            if result_font.stderr.strip():
-                logs.append(f"⚠️ שגיאת פונט: {result_font.stderr}")
+            logs.append("✅ כל האותיות הומרו ל-SVG בהצלחה!")
 
-            logs.append("✅ הפונט נוצר בהצלחה!")
-
-        return jsonify({"saved": os.path.basename(out_path), "files": files, "logs": logs})
+        return jsonify({"saved": out_name, "files": files, "logs": logs})
 
     except Exception as e:
-        logs.append(f"❌ שגיאה כללית: {e}")
+        logs.append(f"❌ שגיאה כללית: {str(e)}")
         return jsonify({"error": str(e), "logs": logs}), 500
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
+
