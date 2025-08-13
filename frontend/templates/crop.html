@@ -136,6 +136,7 @@
 
 <div id="controls">
   <button id="save-crop">שמור אות נוכחית</button>
+  <button id="undo-crop">בטל חיתוך אחרון</button>
 </div>
 <div id="status"></div>
 
@@ -159,6 +160,7 @@
     'א','ב','ג','ד','ה','ו','ז','ח','ט','י','כ','ל','מ','נ','ס','ע','פ','צ','ק','ר','ש','ת','ך','ם','ן','ף','ץ'
   ];
   let currentIndex = 0;
+  let history = [];
 
   // בניית האותיות למעלה
   letters.forEach((ltr, i) => {
@@ -256,10 +258,14 @@
     const pos = getEventPos(e);
     let dx = pos.x - startX;
     let dy = pos.y - startY;
+    const containerRect = container.getBoundingClientRect();
+    const imgRect = img.getBoundingClientRect();
+
     let newLeft = parseInt(cropRect.style.left);
     let newTop = parseInt(cropRect.style.top);
     let newWidth = origWidth;
     let newHeight = origHeight;
+
     if (resizeDir.includes('n')) {
       newTop += dy;
       newHeight -= dy;
@@ -270,8 +276,14 @@
     }
     if (resizeDir.includes('e')) newWidth += dx;
     if (resizeDir.includes('s')) newHeight += dy;
+
     newWidth = Math.max(minWidth, newWidth);
     newHeight = Math.max(minHeight, newHeight);
+
+    // מגבלת התמונה
+    newLeft = clamp(newLeft, imgRect.left - containerRect.left, imgRect.right - containerRect.left - newWidth);
+    newTop = clamp(newTop, imgRect.top - containerRect.top, imgRect.bottom - containerRect.top - newHeight);
+
     cropRect.style.left = newLeft + 'px';
     cropRect.style.top = newTop + 'px';
     cropRect.style.width = newWidth + 'px';
@@ -287,9 +299,7 @@
 
   // שמירת חיתוך
   document.getElementById('save-crop').addEventListener('click', () => {
-    if (!img.naturalWidth) {
-      alert('התמונה עדיין בטעינה חלקית, אבל ננסה לחתוך...');
-    }
+    if (!img.naturalWidth) return alert('התמונה עדיין בטעינה');
     const cropStyle = window.getComputedStyle(cropRect);
     const cropX = parseInt(cropStyle.left);
     const cropY = parseInt(cropStyle.top);
@@ -307,6 +317,7 @@
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, realX, realY, realW, realH, 0, 0, realW, realH);
     const croppedDataUrl = canvas.toDataURL('image/png');
+
     fetch('/backend/save_crop', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -318,24 +329,29 @@
     })
     .then(res => res.json())
     .then(json => {
-      if(json.error) {
-        alert('שגיאה בשמירה: ' + json.error);
-        return;
-      }
-      statusEl.textContent = ✅ האות "${letters[currentIndex]}" נחתכה בהצלחה!;
+      if(json.error) return alert('שגיאה בשמירה: ' + json.error);
+      history.push(currentIndex);
+      statusEl.textContent = `✅ האות "${letters[currentIndex]}" נחתכה בהצלחה! חתוך את האות "${letters[currentIndex+1] || ''}"`;
       lettersBar.children[currentIndex].classList.add('done');
       currentIndex++;
-      if (currentIndex >= letters.length) {
+      if(currentIndex >= letters.length){
         alert('🎉 כל האותיות נחתכו!');
-        currentIndex = 0;
+        currentIndex = letters.length - 1;
       }
       updateLettersBar();
     })
     .catch(err => alert('שגיאה בשליחה: ' + err));
   });
+
+  // Undo חיתוך
+  document.getElementById('undo-crop').addEventListener('click', () => {
+    if(history.length === 0) return;
+    currentIndex = history.pop();
+    lettersBar.children[currentIndex].classList.remove('done');
+    statusEl.textContent = `🔄 חיתוך האות "${letters[currentIndex]}" בוטל. חתוך מחדש את האות.`;
+    updateLettersBar();
+  });
 </script>
 
 </body>
 </html>
-
-
