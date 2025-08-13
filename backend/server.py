@@ -106,7 +106,6 @@ def crop():
 def save_crop():
     logs = []
     try:
-        # silent=True מונע קריסה אם מגיע JSON פגום
         data = request.get_json(silent=True)
         if not data:
             return jsonify({"error": "לא התקבל JSON תקין", "logs": logs}), 400
@@ -115,7 +114,7 @@ def save_crop():
         index = data.get('index')
         imageData = data.get('data')
 
-        if not name or imageData is None:
+        if name is None or imageData is None or index is None:
             return jsonify({"error": "חסרים שדות בנתונים", "logs": logs}), 400
 
         try:
@@ -128,7 +127,7 @@ def save_crop():
         with open(tmp_path, 'wb') as fh:
             fh.write(binary)
 
-        out_path = os.path.join(GLYPHS_DIR, f"{index:02d}_{name}.png")
+        out_path = os.path.join(GLYPHS_DIR, f"{int(index):02d}_{name}.png")
         vertical = VERTICAL_OFFSETS.get(name, 0)
 
         try:
@@ -138,11 +137,13 @@ def save_crop():
 
         logs.append(f"✅ האות '{name}' נשמרה בשם {os.path.basename(out_path)}")
 
+        # ניקוי רשימת הקבצים רק ל-PNG
         files = sorted([f for f in os.listdir(GLYPHS_DIR) if f.lower().endswith('.png')])
 
-        # בדיקה אם יש את כל האותיות
-        if len(files) >= len(LETTERS_ORDER):
-            logs.append("📢 כל האותיות קיימות — מתחיל המרה...")
+        # ספירת אינדקסים בפועל (00 עד 26 = 27 אותיות)
+        indexes_found = {int(f.split('_')[0]) for f in files if f.split('_')[0].isdigit()}
+        if all(i in indexes_found for i in range(27)):  
+            logs.append("📢 כל 27 האותיות קיימות — מתחיל המרה...")
 
             # המרה BW
             result_bw = subprocess.run(["python", "bw_converter.py", GLYPHS_DIR, BW_DIR], capture_output=True, text=True)
@@ -170,6 +171,7 @@ def save_crop():
     except Exception as e:
         logs.append(f"❌ שגיאה כללית: {e}")
         return jsonify({"error": str(e), "logs": logs}), 500
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
