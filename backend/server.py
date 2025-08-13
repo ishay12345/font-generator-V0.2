@@ -170,11 +170,24 @@ def save_crop():
         print(logs[-1])
         return jsonify({"error": str(e), "logs": logs}), 500
 
+# ראוט עמוד הסיום עם כפתור הורדה
+@app.route('/done')
+def done_page():
+    font_ready = os.path.exists(OUTPUT_TTF)
+    download_url = url_for('download_font')
+    return render_template('download_page.html', font_ready=font_ready, download_url=download_url)
+
+# API סטטוס לפונט (כדי שהעמוד ידע אם הפונט כבר נוצר)
+@app.route('/api/font_status')
+def font_status():
+    return jsonify({"font_ready": os.path.exists(OUTPUT_TTF)})
+
 # ראוט להורדת הפונט
 @app.route('/download_font')
 def download_font():
     if os.path.exists(OUTPUT_TTF):
-        return send_file(OUTPUT_TTF, as_attachment=True)
+        # שם קובץ ידידותי להורדה
+        return send_file(OUTPUT_TTF, as_attachment=True, download_name="gHebrewHandwriting.ttf", mimetype="font/ttf")
     return "הפונט עדיין לא נוצר", 404
 
 if __name__ == '__main__':
