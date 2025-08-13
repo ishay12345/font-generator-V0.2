@@ -12,6 +12,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # נתיבי תבניות וסטטיים
 TEMPLATE_DIR = os.path.join(BASE_DIR, '..', 'frontend', 'templates')
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
+FONTS_DIR = os.path.join(STATIC_DIR, 'fonts')
+os.makedirs(FONTS_DIR, exist_ok=True)
 
 # תיקיות עבודה
 UPLOADS_DIR = os.path.join(STATIC_DIR, 'uploads')
@@ -44,9 +46,13 @@ VERTICAL_OFFSETS = {
     "final_tsadi": 50
 }
 
+# נתיב הפונט המוגמר
+OUTPUT_TTF = os.path.join(FONTS_DIR, "gHebrewHandwriting.ttf")
+
 @app.route('/')
 def index():
-    return render_template('index.html')
+    font_ready = os.path.exists(OUTPUT_TTF)
+    return render_template('index.html', font_ready=font_ready)
 
 @app.route('/upload', methods=['POST'])
 def upload():
@@ -71,7 +77,7 @@ def upload():
     os.makedirs(static_uploads, exist_ok=True)
     shutil.copy(processed_path, os.path.join(static_uploads, processed_name))
 
-    return render_template('crop.html', filename=processed_name)
+    return render_template('crop.html', filename=processed_name, font_ready=os.path.exists(OUTPUT_TTF))
 
 @app.route('/crop')
 def crop():
@@ -80,12 +86,12 @@ def crop():
         return redirect(url_for('index'))
 
     image_url = url_for('static', filename=f'processed/{filename}')
-    return render_template('crop.html', image_url=image_url, letters=LETTERS_ORDER)
+    font_ready = os.path.exists(OUTPUT_TTF)
+    return render_template('crop.html', image_url=image_url, letters=LETTERS_ORDER, font_ready=font_ready)
 
 @app.route('/backend/save_crop', methods=['POST'])
 def save_crop():
     logs = []
-
     try:
         data = request.get_json()
         if not data:
@@ -122,43 +128,42 @@ def save_crop():
         print(logs[-1])
 
         files = sorted([f for f in os.listdir(GLYPHS_DIR) if f.lower().endswith('.png')])
-
-        # אם כל 27 האותיות נשמרו → המרה מלאה
         saved_letters = [f.split('_', 1)[1].replace('.png','') for f in files]
-        if len(files) >= 27:
+
+        # אם כל 27 האותיות נשמרו → המרה מלאה ויצירת הפונט
+        font_ready = False
+        if len(saved_letters) >= 27:
             logs.append("📢 מתחיל המרות לשחור-לבן ול-SVG עבור כל האותיות...")
             print(logs[-1])
 
-            # המרה לשחור-לבן (תיקייה שלמה)
             result_bw = subprocess.run(
                 ["python", os.path.join(BASE_DIR, "bw_converter.py"), GLYPHS_DIR, BW_DIR],
                 capture_output=True, text=True
             )
-            logs.append("🔹 BW Converter output:")
             logs.append(result_bw.stdout)
-            print("BW Converter output:")
-            print(result_bw.stdout)
             if result_bw.stderr:
                 logs.append(f"⚠️ שגיאה BW: {result_bw.stderr}")
-                print(f"⚠️ שגיאה BW: {result_bw.stderr}")
 
-            # המרה ל-SVG (תיקייה שלמה)
             result_svg = subprocess.run(
                 ["python", os.path.join(BASE_DIR, "svg_converter.py"), BW_DIR, SVG_DIR],
                 capture_output=True, text=True
             )
-            logs.append("🔹 SVG Converter output:")
             logs.append(result_svg.stdout)
-            print("SVG Converter output:")
-            print(result_svg.stdout)
             if result_svg.stderr:
                 logs.append(f"⚠️ שגיאה SVG: {result_svg.stderr}")
-                print(f"⚠️ שגיאה SVG: {result_svg.stderr}")
 
             logs.append("✅ כל האותיות הומרו ל-SVG בהצלחה!")
-            print(logs[-1])
 
-        return jsonify({"saved": out_name, "files": files, "logs": logs})
+            # יצירת הפונט TTF
+            try:
+                from generate_font import generate_ttf
+                success = generate_ttf(SVG_DIR, OUTPUT_TTF)
+                if success:
+                    font_ready = True
+            except Exception as e:
+                logs.append(f"❌ שגיאה ביצירת הפונט: {e}")
+
+        return jsonify({"saved": out_name, "files": files, "logs": logs, "font_ready": font_ready})
 
     except Exception as e:
         logs.append(f"❌ שגיאה כללית: {str(e)}")
