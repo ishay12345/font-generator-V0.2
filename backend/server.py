@@ -132,24 +132,32 @@ def save_crop():
         print(logs[-1])
 
         # המרה מיידית לשחור־לבן
+        print(f"🖤 מתחיל המרה לשחור-לבן עבור האות {eng_name}...")
         bw_out = os.path.join(BW_DIR, f"{eng_name}.png")
         result_bw = subprocess.run(
             ["python", os.path.join(BASE_DIR, "bw_converter.py"), out_path, bw_out],
             capture_output=True, text=True
         )
-        logs.append(result_bw.stdout)
-        if result_bw.stderr:
-            logs.append(f"⚠️ שגיאה BW: {result_bw.stderr}")
+        if result_bw.returncode == 0:
+            logs.append(f"✅ המרת BW הצליחה עבור {eng_name}")
+            print(logs[-1])
+        else:
+            logs.append(f"❌ שגיאה בהמרת BW עבור {eng_name}: {result_bw.stderr}")
+            print(logs[-1])
 
         # המרה מיידית ל־SVG
+        print(f"📄 מתחיל המרה ל-SVG עבור האות {eng_name}...")
         svg_out = os.path.join(SVG_DIR, f"{eng_name}.svg")
         result_svg = subprocess.run(
             ["python", os.path.join(BASE_DIR, "svg_converter.py"), bw_out, svg_out],
             capture_output=True, text=True
         )
-        logs.append(result_svg.stdout)
-        if result_svg.stderr:
-            logs.append(f"⚠️ שגיאה SVG: {result_svg.stderr}")
+        if result_svg.returncode == 0:
+            logs.append(f"✅ המרת SVG הצליחה עבור {eng_name}")
+            print(logs[-1])
+        else:
+            logs.append(f"❌ שגיאה בהמרת SVG עבור {eng_name}: {result_svg.stderr}")
+            print(logs[-1])
 
         # הפניה אוטומטית בסיום האות האחרונה
         if eng_name == "final_tsadi":
