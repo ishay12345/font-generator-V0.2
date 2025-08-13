@@ -115,12 +115,10 @@ def save_crop():
         except Exception:
             return jsonify({"error": "invalid base64"}), 400
 
-        # שמירת קובץ זמני
         tmp_path = os.path.join(PROCESSED_DIR, f"tmp_{eng_name}.png")
         with open(tmp_path, 'wb') as fh:
             fh.write(binary)
 
-        # עיבוד ושמירה בשם האנגלי בלבד
         vertical = VERTICAL_OFFSETS.get(eng_name, 0)
         out_path = os.path.join(GLYPHS_DIR, f"{eng_name}.png")
         try:
@@ -131,8 +129,6 @@ def save_crop():
         logs.append(f"✅ האות '{eng_name}' (אינדקס {index}) נשמרה בהצלחה בשם {eng_name}.png")
         print(logs[-1])
 
-        # המרה מיידית לשחור־לבן
-        print(f"🖤 מתחיל המרה לשחור-לבן עבור האות {eng_name}...")
         bw_out = os.path.join(BW_DIR, f"{eng_name}.png")
         result_bw = subprocess.run(
             ["python", os.path.join(BASE_DIR, "bw_converter.py"), out_path, bw_out],
@@ -145,8 +141,6 @@ def save_crop():
             logs.append(f"❌ שגיאה בהמרת BW עבור {eng_name}: {result_bw.stderr}")
             print(logs[-1])
 
-        # המרה מיידית ל־SVG
-        print(f"📄 מתחיל המרה ל-SVG עבור האות {eng_name}...")
         svg_out = os.path.join(SVG_DIR, f"{eng_name}.svg")
         result_svg = subprocess.run(
             ["python", os.path.join(BASE_DIR, "svg_converter.py"), bw_out, svg_out],
@@ -159,7 +153,7 @@ def save_crop():
             logs.append(f"❌ שגיאה בהמרת SVG עבור {eng_name}: {result_svg.stderr}")
             print(logs[-1])
 
-        # הפניה אוטומטית בסיום האות האחרונה
+        # אם זו האות האחרונה מפנה ל־done
         if eng_name == "final_tsadi":
             logs.append("🎉 כל האותיות הושלמו! מפנה לעמוד הסיום...")
             return jsonify({"redirect": url_for('done_page'), "logs": logs, "font_ready": os.path.exists(OUTPUT_TTF)})
@@ -171,7 +165,7 @@ def save_crop():
         print(logs[-1])
         return jsonify({"error": str(e), "logs": logs}), 500
 
-# ראוט עמוד הסיום עם כפתור הורדה
+# עמוד סיום עם כפתור הורדה
 @app.route('/done')
 def done_page():
     font_ready = os.path.exists(OUTPUT_TTF)
@@ -183,7 +177,7 @@ def done_page():
 def font_status():
     return jsonify({"font_ready": os.path.exists(OUTPUT_TTF)})
 
-# ראוט להורדת הפונט
+# הורדת הפונט
 @app.route('/download_font')
 def download_font():
     if os.path.exists(OUTPUT_TTF):
