@@ -14,9 +14,7 @@
     align-items: center;
     flex-direction: column;
   }
-
   h1 { margin-top: 10px; }
-
   #letters-bar {
     display: flex;
     flex-wrap: wrap;
@@ -42,7 +40,6 @@
     border-color: #3498db;
     background-color: #ecf6fb;
   }
-
   #image-container {
     position: relative;
     max-width: 90vw;
@@ -54,14 +51,12 @@
     justify-content: center;
     align-items: center;
   }
-
   #source-image {
     display: block;
     max-width: 100%;
     max-height: 70vh;
     object-fit: contain;
   }
-
   #crop-rectangle {
     position: absolute;
     border: 3px dashed #e74c3c;
@@ -75,14 +70,10 @@
     touch-action: none;
     border-radius: 8px;
     box-shadow: 0 0 12px rgba(231, 76, 60, 0.7);
-    display: flex;
-    justify-content: space-between;
-    align-items: space-between;
   }
   #crop-rectangle:active {
     box-shadow: 0 0 20px rgba(231, 76, 60, 1);
   }
-
   .resize-handle {
     position: absolute;
     width: 14px;
@@ -95,7 +86,6 @@
   .resize-handle.ne { top: -7px; right: -7px; cursor: nesw-resize; }
   .resize-handle.sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
   .resize-handle.se { bottom: -7px; right: -7px; cursor: nwse-resize; }
-
   #controls { margin-top: 15px; }
   button {
     padding: 10px 18px;
@@ -109,7 +99,6 @@
     transition: background-color 0.25s ease;
   }
   button:hover { background-color: #2980b9; }
-
   #status { margin-top: 10px; font-weight: bold; color: green; }
   #download-btn {
     display: none;
@@ -123,9 +112,7 @@
 <body>
 
 <h1>חיתוך סדרתי של אותיות</h1>
-
 <div id="letters-bar"></div>
-
 <div id="image-container">
   <img
     id="source-image"
@@ -140,11 +127,10 @@
     <div class="resize-handle se"></div>
   </div>
 </div>
-
 <div id="controls">
   <button id="save-crop">שמור אות נוכחית</button>
   <button id="undo-crop">בטל חיתוך אחרון</button>
-  <button id="download-btn">⬇️ הורד את הפונט / קובץ ZIP</button>
+  <button id="download-btn">⬇️ הורד את הפונט (TTF)</button>
 </div>
 <div id="status"></div>
 
@@ -263,23 +249,18 @@
     let dy = pos.y - startY;
     const containerRect = container.getBoundingClientRect();
     const imgRect = img.getBoundingClientRect();
-
     let newLeft = parseInt(cropRect.style.left);
     let newTop = parseInt(cropRect.style.top);
     let newWidth = origWidth;
     let newHeight = origHeight;
-
     if (resizeDir.includes('n')) { newTop += dy; newHeight -= dy; }
     if (resizeDir.includes('w')) { newLeft += dx; newWidth -= dx; }
     if (resizeDir.includes('e')) newWidth += dx;
     if (resizeDir.includes('s')) newHeight += dy;
-
     newWidth = Math.max(minWidth, newWidth);
     newHeight = Math.max(minHeight, newHeight);
-
     newLeft = clamp(newLeft, imgRect.left - containerRect.left, imgRect.right - containerRect.left - newWidth);
     newTop = clamp(newTop, imgRect.top - containerRect.top, imgRect.bottom - containerRect.top - newHeight);
-
     cropRect.style.left = newLeft + 'px';
     cropRect.style.top = newTop + 'px';
     cropRect.style.width = newWidth + 'px';
@@ -330,12 +311,10 @@
       lettersBar.children[currentIndex].classList.add('done');
       currentIndex++;
       updateLettersBar();
-
       if(currentIndex >= letters.length){
         alert('🎉 כל האותיות נחתכו!');
-        // הצגת כפתור הורדה
         downloadBtn.style.display = 'inline-block';
-        statusEl.textContent = "כל האותיות נחתכו! הורד את הקובץ כאן 👇";
+        statusEl.textContent = "כל האותיות נחתכו! הורד את קובץ הפונט כאן 👇";
       } else {
         statusEl.textContent = `✅ האות "${letters[currentIndex-1]}" נחתכה בהצלחה! חתוך את האות "${letters[currentIndex]}"`;
       }
@@ -352,12 +331,10 @@
     updateLettersBar();
   });
 
-  // הורדה
+  // הורדה של קובץ TTF
   downloadBtn.addEventListener('click', () => {
-    // אם הפונט מוכן מהשרת, פשוט הורד
-    window.location.href = '/backend/download_font';
+    window.location.href = '/backend/download_font.ttf';
   });
-
 </script>
 
 </body>
