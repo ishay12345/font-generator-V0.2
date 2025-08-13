@@ -123,10 +123,9 @@ def save_crop():
 
         files = sorted([f for f in os.listdir(GLYPHS_DIR) if f.lower().endswith('.png')])
 
-        # נבדוק שכל האותיות ברשימה נשמרו
-        saved_letters = [f.split('_', 1)[1].replace('.png','') for f in files]
-        if all(letter in saved_letters for letter in LETTERS_ORDER):
-            logs.append("📢 כל האותיות נשמרו — מתחיל המרות...")
+        # אם יש לפחות אות אחת → המרה מלאה
+        if len(files) > 0:
+            logs.append("📢 מתחיל המרות לשחור-לבן ול-SVG עבור כל האותיות...")
             print(logs[-1])
 
             # המרה לשחור-לבן (תיקייה שלמה)
@@ -167,3 +166,4 @@ def save_crop():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
