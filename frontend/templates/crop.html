@@ -111,6 +111,7 @@
   button:hover { background-color: #2980b9; }
 
   #status { margin-top: 10px; font-weight: bold; color: green; }
+  #download-font { display: none; margin-top: 15px; }
 </style>
 </head>
 <body>
@@ -137,6 +138,7 @@
 <div id="controls">
   <button id="save-crop">שמור אות נוכחית</button>
 </div>
+<button id="download-font">⬇️ הורד את הפונט</button>
 <div id="status"></div>
 
 <script>
@@ -145,6 +147,7 @@
   const cropRect = document.getElementById('crop-rectangle');
   const statusEl = document.getElementById('status');
   const lettersBar = document.getElementById('letters-bar');
+  const downloadBtn = document.getElementById('download-font');
 
   const minWidth = 30;
   const minHeight = 30;
@@ -154,13 +157,11 @@
   let startX, startY;
   let origX, origY, origWidth, origHeight;
 
-  // רשימת האותיות
   const letters = [
     'א','ב','ג','ד','ה','ו','ז','ח','ט','י','כ','ל','מ','נ','ס','ע','פ','צ','ק','ר','ש','ת','ך','ם','ן','ף','ץ'
   ];
   let currentIndex = 0;
 
-  // בניית האותיות למעלה
   letters.forEach((ltr, i) => {
     const el = document.createElement('div');
     el.className = 'letter';
@@ -176,15 +177,10 @@
     });
   }
 
-  function clamp(val, min, max) {
-    return Math.min(Math.max(val, min), max);
-  }
+  function clamp(val, min, max) { return Math.min(Math.max(val, min), max); }
   function getEventPos(e) {
-    if (e.touches && e.touches.length > 0) {
-      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    } else {
-      return { x: e.clientX, y: e.clientY };
-    }
+    if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    return { x: e.clientX, y: e.clientY };
   }
 
   // גרירה
@@ -195,11 +191,9 @@
     e.preventDefault();
     drag = true;
     const pos = getEventPos(e);
-    startX = pos.x;
-    startY = pos.y;
+    startX = pos.x; startY = pos.y;
     const rect = cropRect.getBoundingClientRect();
-    origX = rect.left;
-    origY = rect.top;
+    origX = rect.left; origY = rect.top;
     window.addEventListener('mousemove', onDrag);
     window.addEventListener('touchmove', onDrag, { passive: false });
     window.addEventListener('mouseup', stopDrag);
@@ -209,8 +203,7 @@
     if (!drag) return;
     e.preventDefault();
     const pos = getEventPos(e);
-    const dx = pos.x - startX;
-    const dy = pos.y - startY;
+    const dx = pos.x - startX; const dy = pos.y - startY;
     const containerRect = container.getBoundingClientRect();
     const imgRect = img.getBoundingClientRect();
     let newLeft = origX + dx;
@@ -238,13 +231,10 @@
     resize = true;
     resizeDir = [...e.target.classList].find(c => ['nw','ne','sw','se'].includes(c));
     const pos = getEventPos(e);
-    startX = pos.x;
-    startY = pos.y;
+    startX = pos.x; startY = pos.y;
     const rect = cropRect.getBoundingClientRect();
-    origX = rect.left;
-    origY = rect.top;
-    origWidth = cropRect.offsetWidth;
-    origHeight = cropRect.offsetHeight;
+    origX = rect.left; origY = rect.top;
+    origWidth = cropRect.offsetWidth; origHeight = cropRect.offsetHeight;
     window.addEventListener('mousemove', onResize);
     window.addEventListener('touchmove', onResize, { passive: false });
     window.addEventListener('mouseup', stopResize);
@@ -254,28 +244,17 @@
     if (!resize) return;
     e.preventDefault();
     const pos = getEventPos(e);
-    let dx = pos.x - startX;
-    let dy = pos.y - startY;
+    let dx = pos.x - startX; let dy = pos.y - startY;
     let newLeft = parseInt(cropRect.style.left);
     let newTop = parseInt(cropRect.style.top);
-    let newWidth = origWidth;
-    let newHeight = origHeight;
-    if (resizeDir.includes('n')) {
-      newTop += dy;
-      newHeight -= dy;
-    }
-    if (resizeDir.includes('w')) {
-      newLeft += dx;
-      newWidth -= dx;
-    }
+    let newWidth = origWidth; let newHeight = origHeight;
+    if (resizeDir.includes('n')) { newTop += dy; newHeight -= dy; }
+    if (resizeDir.includes('w')) { newLeft += dx; newWidth -= dx; }
     if (resizeDir.includes('e')) newWidth += dx;
     if (resizeDir.includes('s')) newHeight += dy;
-    newWidth = Math.max(minWidth, newWidth);
-    newHeight = Math.max(minHeight, newHeight);
-    cropRect.style.left = newLeft + 'px';
-    cropRect.style.top = newTop + 'px';
-    cropRect.style.width = newWidth + 'px';
-    cropRect.style.height = newHeight + 'px';
+    newWidth = Math.max(minWidth, newWidth); newHeight = Math.max(minHeight, newHeight);
+    cropRect.style.left = newLeft + 'px'; cropRect.style.top = newTop + 'px';
+    cropRect.style.width = newWidth + 'px'; cropRect.style.height = newHeight + 'px';
   }
   function stopResize() {
     resize = false;
@@ -287,9 +266,7 @@
 
   // שמירת חיתוך
   document.getElementById('save-crop').addEventListener('click', () => {
-    if (!img.naturalWidth) {
-      alert('התמונה עדיין בטעינה חלקית, אבל ננסה לחתוך...');
-    }
+    if (!img.naturalWidth) alert('התמונה עדיין בטעינה חלקית.');
     const cropStyle = window.getComputedStyle(cropRect);
     const cropX = parseInt(cropStyle.left);
     const cropY = parseInt(cropStyle.top);
@@ -302,11 +279,11 @@
     const realW = Math.round(cropW * scaleX);
     const realH = Math.round(cropH * scaleY);
     const canvas = document.createElement('canvas');
-    canvas.width = realW;
-    canvas.height = realH;
+    canvas.width = realW; canvas.height = realH;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, realX, realY, realW, realH, 0, 0, realW, realH);
     const croppedDataUrl = canvas.toDataURL('image/png');
+
     fetch('/backend/save_crop', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -318,22 +295,27 @@
     })
     .then(res => res.json())
     .then(json => {
-      if(json.error) {
-        alert('שגיאה בשמירה: ' + json.error);
-        return;
-      }
+      if(json.error) { alert('שגיאה: ' + json.error); return; }
       statusEl.textContent = `✅ האות "${letters[currentIndex]}" נחתכה בהצלחה!`;
       lettersBar.children[currentIndex].classList.add('done');
       currentIndex++;
-      if (currentIndex >= letters.length) {
-        alert('🎉 כל האותיות נחתכו!');
-        currentIndex = 0;
-      }
       updateLettersBar();
+
+      // אם הגענו לסוף האותיות, להראות כפתור הורדה
+      if(currentIndex >= letters.length) {
+        downloadBtn.style.display = 'inline-block';
+        statusEl.textContent = `🎉 כל האותיות נחתכו והפונט מוכן להורדה!`;
+      }
     })
     .catch(err => alert('שגיאה בשליחה: ' + err));
+  });
+
+  // הורדה של הפונט
+  downloadBtn.addEventListener('click', () => {
+    window.location.href = '/static/fonts/generated_font.ttf';
   });
 </script>
 
 </body>
 </html>
+
