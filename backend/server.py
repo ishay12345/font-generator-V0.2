@@ -119,6 +119,7 @@ def save_crop():
                 fh.write(binary)
 
         logs.append(f"✅ האות '{name}' נשמרה בהצלחה בשם {out_name}")
+        print(logs[-1])
 
         files = sorted([f for f in os.listdir(GLYPHS_DIR) if f.lower().endswith('.png')])
 
@@ -126,31 +127,42 @@ def save_crop():
         saved_letters = [f.split('_', 1)[1].replace('.png','') for f in files]
         if all(letter in saved_letters for letter in LETTERS_ORDER):
             logs.append("📢 כל האותיות נשמרו — מתחיל המרות...")
+            print(logs[-1])
 
             # המרה לשחור-לבן (תיקייה שלמה)
             result_bw = subprocess.run(
                 ["python", "bw_converter.py", GLYPHS_DIR, BW_DIR],
                 capture_output=True, text=True
             )
+            logs.append("🔹 BW Converter output:")
             logs.append(result_bw.stdout)
+            print("BW Converter output:")
+            print(result_bw.stdout)
             if result_bw.stderr:
                 logs.append(f"⚠️ שגיאה BW: {result_bw.stderr}")
+                print(f"⚠️ שגיאה BW: {result_bw.stderr}")
 
             # המרה ל-SVG (תיקייה שלמה)
             result_svg = subprocess.run(
                 ["python", "svg_converter.py", BW_DIR, SVG_DIR],
                 capture_output=True, text=True
             )
+            logs.append("🔹 SVG Converter output:")
             logs.append(result_svg.stdout)
+            print("SVG Converter output:")
+            print(result_svg.stdout)
             if result_svg.stderr:
                 logs.append(f"⚠️ שגיאה SVG: {result_svg.stderr}")
+                print(f"⚠️ שגיאה SVG: {result_svg.stderr}")
 
             logs.append("✅ כל האותיות הומרו ל-SVG בהצלחה!")
+            print(logs[-1])
 
         return jsonify({"saved": out_name, "files": files, "logs": logs})
 
     except Exception as e:
         logs.append(f"❌ שגיאה כללית: {str(e)}")
+        print(logs[-1])
         return jsonify({"error": str(e), "logs": logs}), 500
 
 if __name__ == '__main__':
