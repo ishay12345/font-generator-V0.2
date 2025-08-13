@@ -5,9 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>חיתוך האותיות</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
-    #canvasContainer { text-align: center; margin-bottom: 20px; }
-    #lettersList { display: flex; flex-wrap: wrap; gap: 5px; }
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; text-align: center; }
+    #lettersList { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin-bottom: 20px; }
     .letterBtn {
       padding: 8px 12px;
       border: 1px solid #ccc;
@@ -21,30 +20,37 @@
       margin-top: 10px;
       font-size: 0.9rem;
     }
+    #downloadLink {
+      display: none;
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      background: #2ecc71;
+      color: white;
+      border-radius: 6px;
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
 
 <h1>בחר את האות שברצונך לחתוך</h1>
 
-<div id="canvasContainer">
-  <canvas id="mainCanvas"></canvas>
-</div>
-
 <div id="lettersList"></div>
 
 <div id="progressBox">מכין את התמונה… <span id="progressPercent">0%</span></div>
+
+<a id="downloadLink" href="/backend/download_font" download>⬇ הורד את הפונט שלך</a>
 
 <script>
   const letters = {{ letters | tojson }};
   let currentLetterIndex = 0;
   let usedLetters = new Set();
 
-  const canvas = document.getElementById('mainCanvas');
-  const ctx = canvas.getContext('2d');
   const lettersListDiv = document.getElementById('lettersList');
   const progressBox = document.getElementById('progressBox');
   const progressPercent = document.getElementById('progressPercent');
+  const downloadLink = document.getElementById('downloadLink');
 
   // יצירת כפתורים
   letters.forEach((letter, idx) => {
@@ -61,20 +67,11 @@
     alert(`בחרת את האות: ${letters[index]}. עכשיו סמן את המיקום על התמונה.`);
   }
 
-  // אירוע חיתוך — סימולציה
-  canvas.addEventListener('click', (e) => {
-    if (usedLetters.has(currentLetterIndex)) {
-      alert('כבר השתמשת במיקום הזה. בחר אות אחרת.');
-      return;
-    }
-    simulateCrop();
-  });
-
+  // סימולציה של חיתוך
   function simulateCrop() {
     usedLetters.add(currentLetterIndex);
     updateButtons();
 
-    // הצגת טעינה
     progressBox.style.display = 'block';
     let percent = 0;
     const interval = setInterval(() => {
@@ -110,10 +107,17 @@
     .then(r => r.json())
     .then(res => {
       if (res.font_ready) {
-        window.location.href = '/done';
+        // הצגת כפתור הורדה במקום הפניה ל־404
+        downloadLink.style.display = 'inline-block';
+        alert('🎉 כל האותיות נחתכו! לחץ על כפתור ההורדה להורדת הפונט שלך.');
       }
     });
   }
+
+  // לחיצה על הקנבס סימולציה
+  document.body.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') simulateCrop();
+  });
 </script>
 
 </body>
