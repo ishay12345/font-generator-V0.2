@@ -2,7 +2,7 @@ import os
 import base64
 import shutil
 import subprocess
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file
 from werkzeug.utils import secure_filename
 from process_image import convert_to_black_white, normalize_and_center_glyph
 
@@ -169,6 +169,13 @@ def save_crop():
         logs.append(f"❌ שגיאה כללית: {str(e)}")
         print(logs[-1])
         return jsonify({"error": str(e), "logs": logs}), 500
+
+# ראוט להורדת הפונט
+@app.route('/download_font')
+def download_font():
+    if os.path.exists(OUTPUT_TTF):
+        return send_file(OUTPUT_TTF, as_attachment=True)
+    return "הפונט עדיין לא נוצר", 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
