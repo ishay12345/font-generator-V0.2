@@ -97,12 +97,17 @@ def save_crop():
         if not data:
             return jsonify({"error": "no json"}), 400
 
-        name = data.get('name')
         index = data.get('index')
         imageData = data.get('data')
 
-        if not name or imageData is None:
+        if index is None or imageData is None:
             return jsonify({"error": "missing fields"}), 400
+
+        try:
+            index = int(index)
+            eng_name = LETTERS_ORDER[index]
+        except (ValueError, IndexError):
+            return jsonify({"error": "invalid index"}), 400
 
         try:
             _, b64 = imageData.split(',', 1)
@@ -110,60 +115,48 @@ def save_crop():
         except Exception:
             return jsonify({"error": "invalid base64"}), 400
 
-        tmp_name = f"tmp_{index}_{name}.png"
-        tmp_path = os.path.join(PROCESSED_DIR, tmp_name)
+        # שמירת קובץ זמני
+        tmp_path = os.path.join(PROCESSED_DIR, f"tmp_{eng_name}.png")
         with open(tmp_path, 'wb') as fh:
             fh.write(binary)
 
-        vertical = VERTICAL_OFFSETS.get(name, 0)
-        out_name = f"{index:02d}_{name}.png"
-        out_path = os.path.join(GLYPHS_DIR, out_name)
+        # עיבוד ושמירה בשם האנגלי בלבד
+        vertical = VERTICAL_OFFSETS.get(eng_name, 0)
+        out_path = os.path.join(GLYPHS_DIR, f"{eng_name}.png")
         try:
             normalize_and_center_glyph(tmp_path, out_path, target_size=600, margin=50, vertical_offset=vertical)
         except Exception:
-            with open(out_path, 'wb') as fh:
-                fh.write(binary)
+            shutil.copy(tmp_path, out_path)
 
-        logs.append(f"✅ האות '{name}' נשמרה בהצלחה בשם {out_name}")
+        logs.append(f"✅ האות '{eng_name}' (אינדקס {index}) נשמרה בהצלחה בשם {eng_name}.png")
         print(logs[-1])
 
-        files = sorted([f for f in os.listdir(GLYPHS_DIR) if f.lower().endswith('.png')])
-        saved_letters = [f.split('_', 1)[1].replace('.png','') for f in files]
+        # המרה מיידית לשחור־לבן
+        bw_out = os.path.join(BW_DIR, f"{eng_name}.png")
+        result_bw = subprocess.run(
+            ["python", os.path.join(BASE_DIR, "bw_converter.py"), out_path, bw_out],
+            capture_output=True, text=True
+        )
+        logs.append(result_bw.stdout)
+        if result_bw.stderr:
+            logs.append(f"⚠️ שגיאה BW: {result_bw.stderr}")
 
-        # אם כל 27 האותיות נשמרו → המרה מלאה ויצירת הפונט
-        font_ready = False
-        if len(saved_letters) >= 27:
-            logs.append("📢 מתחיל המרות לשחור-לבן ול-SVG עבור כל האותיות...")
-            print(logs[-1])
+        # המרה מיידית ל־SVG
+        svg_out = os.path.join(SVG_DIR, f"{eng_name}.svg")
+        result_svg = subprocess.run(
+            ["python", os.path.join(BASE_DIR, "svg_converter.py"), bw_out, svg_out],
+            capture_output=True, text=True
+        )
+        logs.append(result_svg.stdout)
+        if result_svg.stderr:
+            logs.append(f"⚠️ שגיאה SVG: {result_svg.stderr}")
 
-            result_bw = subprocess.run(
-                ["python", os.path.join(BASE_DIR, "bw_converter.py"), GLYPHS_DIR, BW_DIR],
-                capture_output=True, text=True
-            )
-            logs.append(result_bw.stdout)
-            if result_bw.stderr:
-                logs.append(f"⚠️ שגיאה BW: {result_bw.stderr}")
+        # הפניה אוטומטית בסיום האות האחרונה
+        if eng_name == "final_tsadi":
+            logs.append("🎉 כל האותיות הושלמו! מפנה לעמוד הסיום...")
+            return jsonify({"redirect": url_for('done_page'), "logs": logs, "font_ready": os.path.exists(OUTPUT_TTF)})
 
-            result_svg = subprocess.run(
-                ["python", os.path.join(BASE_DIR, "svg_converter.py"), BW_DIR, SVG_DIR],
-                capture_output=True, text=True
-            )
-            logs.append(result_svg.stdout)
-            if result_svg.stderr:
-                logs.append(f"⚠️ שגיאה SVG: {result_svg.stderr}")
-
-            logs.append("✅ כל האותיות הומרו ל-SVG בהצלחה!")
-
-            # יצירת הפונט TTF
-            try:
-                from generate_font import generate_ttf
-                success = generate_ttf(SVG_DIR, OUTPUT_TTF)
-                if success:
-                    font_ready = True
-            except Exception as e:
-                logs.append(f"❌ שגיאה ביצירת הפונט: {e}")
-
-        return jsonify({"saved": out_name, "files": files, "logs": logs, "font_ready": font_ready})
+        return jsonify({"saved": f"{eng_name}.png", "logs": logs})
 
     except Exception as e:
         logs.append(f"❌ שגיאה כללית: {str(e)}")
@@ -177,7 +170,7 @@ def done_page():
     download_url = url_for('download_font')
     return render_template('download_page.html', font_ready=font_ready, download_url=download_url)
 
-# API סטטוס לפונט (כדי שהעמוד ידע אם הפונט כבר נוצר)
+# API סטטוס לפונט
 @app.route('/api/font_status')
 def font_status():
     return jsonify({"font_ready": os.path.exists(OUTPUT_TTF)})
@@ -186,7 +179,6 @@ def font_status():
 @app.route('/download_font')
 def download_font():
     if os.path.exists(OUTPUT_TTF):
-        # שם קובץ ידידותי להורדה
         return send_file(OUTPUT_TTF, as_attachment=True, download_name="gHebrewHandwriting.ttf", mimetype="font/ttf")
     return "הפונט עדיין לא נוצר", 404
 
