@@ -3,101 +3,118 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>הורדת הפונט</title>
+  <title>חיתוך האותיות</title>
   <style>
-    html, body {
-      margin: 0; padding: 0;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: #fafafa; color: #222;
-      display: flex; align-items: center; justify-content: center;
-      min-height: 100vh; flex-direction: column;
-    }
-    .card {
-      background: #fff;
-      border: 1px solid #eee;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-      max-width: 520px; width: 92%;
-      padding: 24px;
-      text-align: center;
-    }
-    h1 { margin: 0 0 12px; font-size: 1.6rem; }
-    p  { margin: 6px 0 18px; }
-    .btn {
-      display: inline-block;
-      padding: 12px 18px;
-      border-radius: 8px;
-      border: none;
-      background: #27ae60;
-      color: #fff;
-      font-size: 1rem;
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
+    #canvasContainer { text-align: center; margin-bottom: 20px; }
+    #lettersList { display: flex; flex-wrap: wrap; gap: 5px; }
+    .letterBtn {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: white;
       cursor: pointer;
-      text-decoration: none;
-      transition: transform .05s ease, background .2s ease;
     }
-    .btn:hover { background: #1e8449; }
-    .btn:active { transform: translateY(1px); }
-    .btn[disabled] {
-      background: #bdbdbd; cursor: not-allowed;
+    .letterBtn.used { background: #ddd; cursor: not-allowed; }
+    #progressBox {
+      display: none;
+      margin-top: 10px;
+      font-size: 0.9rem;
     }
-    .meta {
-      margin-top: 12px; color: #666; font-size: .95rem;
-    }
-    .spinner {
-      width: 22px; height: 22px; border: 3px solid #ddd; border-top-color: #27ae60;
-      border-radius: 50%; display: inline-block; animation: spin 0.9s linear infinite; margin-left: 8px;
-      vertical-align: middle;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-  <div class="card">
-    <h1>מעולה! סיימת 🎉</h1>
-    <p id="msg">
-      אנחנו מסדרים את הפונט הסופי שלך…<span class="spinner" id="spin" style="display: none;"></span>
-    </p>
+<h1>בחר את האות שברצונך לחתוך</h1>
 
-    {% if font_ready %}
-      <a class="btn" id="downloadBtn" href="{{ download_url }}">⬇️ הורד את הפונט (TTF)</a>
-      <div class="meta">שם הקובץ: <b>gHebrewHandwriting.ttf</b></div>
-    {% else %}
-      <button class="btn" id="downloadBtn" disabled>⬇️ הורד את הפונט (TTF)</button>
-      <div class="meta">העמוד יעדכן אוטומטית כשהפונט יהיה מוכן.</div>
-    {% endif %}
+<div id="canvasContainer">
+  <canvas id="mainCanvas"></canvas>
+</div>
 
-    <div class="meta" style="margin-top:16px">
-      <a href="{{ url_for('index') }}">↩︎ חזרה להתחלה</a>
-    </div>
-  </div>
+<div id="lettersList"></div>
 
-  <script>
-    // אם הפונט עוד לא מוכן – נבדוק כל כמה רגעים ונאפשר את הכפתור
-    const btn = document.getElementById('downloadBtn');
-    const msg = document.getElementById('msg');
-    const spin = document.getElementById('spin');
+<div id="progressBox">מכין את התמונה… <span id="progressPercent">0%</span></div>
 
-    {% if not font_ready %}
-      spin.style.display = 'inline-block';
-      const check = () => {
-        fetch('/api/font_status')
-          .then(r => r.json())
-          .then(j => {
-            if (j.font_ready) {
-              btn.disabled = false;
-              btn.onclick = () => { window.location.href = '/download_font'; };
-              btn.textContent = '⬇️ הורד את הפונט (TTF)';
-              msg.textContent = 'הפונט מוכן!';
-              spin.style.display = 'none';
-              clearInterval(intv);
-            }
-          })
-          .catch(() => {});
-      };
-      const intv = setInterval(check, 1500);
-      check();
-    {% endif %}
-  </script>
+<script>
+  const letters = {{ letters | tojson }};
+  let currentLetterIndex = 0;
+  let usedLetters = new Set();
+
+  const canvas = document.getElementById('mainCanvas');
+  const ctx = canvas.getContext('2d');
+  const lettersListDiv = document.getElementById('lettersList');
+  const progressBox = document.getElementById('progressBox');
+  const progressPercent = document.getElementById('progressPercent');
+
+  // יצירת כפתורים
+  letters.forEach((letter, idx) => {
+    const btn = document.createElement('button');
+    btn.textContent = letter;
+    btn.className = 'letterBtn';
+    btn.onclick = () => selectLetter(idx);
+    lettersListDiv.appendChild(btn);
+  });
+
+  function selectLetter(index) {
+    if (usedLetters.has(index)) return;
+    currentLetterIndex = index;
+    alert(`בחרת את האות: ${letters[index]}. עכשיו סמן את המיקום על התמונה.`);
+  }
+
+  // אירוע חיתוך — סימולציה
+  canvas.addEventListener('click', (e) => {
+    if (usedLetters.has(currentLetterIndex)) {
+      alert('כבר השתמשת במיקום הזה. בחר אות אחרת.');
+      return;
+    }
+    simulateCrop();
+  });
+
+  function simulateCrop() {
+    usedLetters.add(currentLetterIndex);
+    updateButtons();
+
+    // הצגת טעינה
+    progressBox.style.display = 'block';
+    let percent = 0;
+    const interval = setInterval(() => {
+      percent += 25;
+      progressPercent.textContent = percent + '%';
+      if (percent >= 100) {
+        clearInterval(interval);
+        progressBox.style.display = 'none';
+        sendCropData(letters[currentLetterIndex]);
+      }
+    }, 200);
+  }
+
+  function updateButtons() {
+    document.querySelectorAll('.letterBtn').forEach((btn, idx) => {
+      if (usedLetters.has(idx)) {
+        btn.classList.add('used');
+        btn.disabled = true;
+      }
+    });
+  }
+
+  function sendCropData(letterName) {
+    fetch('/backend/save_crop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: letterName,
+        index: currentLetterIndex,
+        data: 'data:image/png;base64,...' // כאן תשים את ה־Base64 האמיתי מהחיתוך
+      })
+    })
+    .then(r => r.json())
+    .then(res => {
+      if (res.font_ready) {
+        window.location.href = '/done';
+      }
+    });
+  }
+</script>
+
 </body>
 </html>
