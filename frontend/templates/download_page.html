@@ -40,7 +40,7 @@
 
 <div id="progressBox">מכין את התמונה… <span id="progressPercent">0%</span></div>
 
-<a id="downloadLink" href="/backend/download_font" download>⬇ הורד את הפונט שלך</a>
+<a id="downloadLink" href="{{ download_url }}" download>⬇ הורד את הפונט שלך</a>
 
 <script>
   const letters = {{ letters | tojson }};
@@ -64,11 +64,12 @@
   function selectLetter(index) {
     if (usedLetters.has(index)) return;
     currentLetterIndex = index;
-    alert(`בחרת את האות: ${letters[index]}. עכשיו סמן את המיקום על התמונה.`);
+    alert(`בחרת את האות: ${letters[index]}. עכשיו לחץ Enter לחיתוך.`);
   }
 
-  // סימולציה של חיתוך
   function simulateCrop() {
+    if (usedLetters.has(currentLetterIndex)) return;
+
     usedLetters.add(currentLetterIndex);
     updateButtons();
 
@@ -101,20 +102,20 @@
       body: JSON.stringify({
         name: letterName,
         index: currentLetterIndex,
-        data: 'data:image/png;base64,...' // כאן תשים את ה־Base64 האמיתי מהחיתוך
+        data: 'data:image/png;base64,...' // להכניס כאן את Base64 האמיתי
       })
     })
     .then(r => r.json())
     .then(res => {
       if (res.font_ready) {
-        // הצגת כפתור הורדה במקום הפניה ל־404
         downloadLink.style.display = 'inline-block';
         alert('🎉 כל האותיות נחתכו! לחץ על כפתור ההורדה להורדת הפונט שלך.');
       }
-    });
+    })
+    .catch(err => console.error('שגיאה בשמירת החיתוך:', err));
   }
 
-  // לחיצה על הקנבס סימולציה
+  // לחיצה על Enter לסימולציה של חיתוך
   document.body.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') simulateCrop();
   });
