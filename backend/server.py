@@ -123,14 +123,15 @@ def save_crop():
 
         files = sorted([f for f in os.listdir(GLYPHS_DIR) if f.lower().endswith('.png')])
 
-        # אם יש לפחות אות אחת → המרה מלאה
-        if len(files) > 0:
+        # אם כל 27 האותיות נשמרו → המרה מלאה
+        saved_letters = [f.split('_', 1)[1].replace('.png','') for f in files]
+        if len(files) >= 27:
             logs.append("📢 מתחיל המרות לשחור-לבן ול-SVG עבור כל האותיות...")
             print(logs[-1])
 
             # המרה לשחור-לבן (תיקייה שלמה)
             result_bw = subprocess.run(
-                ["python", "bw_converter.py", GLYPHS_DIR, BW_DIR],
+                ["python", os.path.join(BASE_DIR, "bw_converter.py"), GLYPHS_DIR, BW_DIR],
                 capture_output=True, text=True
             )
             logs.append("🔹 BW Converter output:")
@@ -143,7 +144,7 @@ def save_crop():
 
             # המרה ל-SVG (תיקייה שלמה)
             result_svg = subprocess.run(
-                ["python", "svg_converter.py", BW_DIR, SVG_DIR],
+                ["python", os.path.join(BASE_DIR, "svg_converter.py"), BW_DIR, SVG_DIR],
                 capture_output=True, text=True
             )
             logs.append("🔹 SVG Converter output:")
@@ -166,4 +167,3 @@ def save_crop():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-
