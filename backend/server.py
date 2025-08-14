@@ -154,11 +154,25 @@ def save_crop():
             logs.append(f"❌ שגיאה בהמרת SVG עבור {eng_name}: {result_svg.stderr}")
         print(logs[-1])
 
-        # אם זו האות האחרונה
+        # אם זו האות האחרונה, קריאה ל-generate_font.py
         if eng_name == "final_tsadi":
-            logs.append("🎉 כל האותיות הושלמו! הפונט מוכן להורדה")
+            logs.append("🎉 כל האותיות הושלמו! מתחילים יצירת הפונט...")
             print("כל האותיות:", LETTERS_ORDER)
             print("סטטוס האותיות בפונט:", logs)
+
+            try:
+                result_font = subprocess.run(
+                    ["python", os.path.join(BASE_DIR, "generate_font.py"), SVG_DIR, OUTPUT_TTF],
+                    capture_output=True, text=True
+                )
+                if result_font.returncode == 0:
+                    logs.append(f"🎉 הפונט נוצר בהצלחה: {OUTPUT_TTF}")
+                else:
+                    logs.append(f"❌ שגיאה ביצירת הפונט: {result_font.stderr}")
+            except Exception as e:
+                logs.append(f"❌ שגיאה בהרצת generate_font.py: {str(e)}")
+            print(logs[-1])
+
             return jsonify({"font_ready": os.path.exists(OUTPUT_TTF), "logs": logs})
 
         return jsonify({"saved": f"{eng_name}.png", "logs": logs})
