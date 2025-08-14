@@ -1,10 +1,11 @@
 import os
 import base64
 import shutil
-from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file
+from flask import Flask, render_template, request, jsonify, url_for, send_file
 from werkzeug.utils import secure_filename
 from process_image import convert_to_black_white, normalize_and_center_glyph
-from generate_font import generate_ttf  # הפונקציה המעודכנת שלך
+from generate_font import generate_ttf  # הפונקציה שלך ליצירת TTF
+from svg_converter import convert_png_to_svg  # המרת PNG ל-SVG
 
 # --- נתיבי בסיס ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -19,7 +20,7 @@ UPLOADS_DIR = os.path.join(STATIC_DIR, 'uploads')
 PROCESSED_DIR = os.path.join(STATIC_DIR, 'processed')
 GLYPHS_DIR = os.path.join(STATIC_DIR, 'glyphs')
 BW_DIR = os.path.join(STATIC_DIR, 'bw')
-SVG_DIR = os.path.join(STATIC_DIR, 'svg_letters')  # תיקייה אחידה ל-SVG
+SVG_DIR = os.path.join(STATIC_DIR, 'svg_letters')
 
 for d in (UPLOADS_DIR, PROCESSED_DIR, GLYPHS_DIR, BW_DIR, SVG_DIR):
     os.makedirs(d, exist_ok=True)
@@ -30,7 +31,7 @@ FONT_OUTPUT_PATH = os.path.join(EXPORT_FOLDER, 'my_font.ttf')
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 
-# סדר האותיות
+# סדר האותיות לפי המיקום הרגיל
 LETTERS_ORDER = [
     "alef","bet","gimel","dalet","he","vav","zayin","het","tet",
     "yod","kaf","lamed","mem","nun","samekh","ayin","pe","tsadi",
@@ -39,12 +40,8 @@ LETTERS_ORDER = [
 ]
 
 VERTICAL_OFFSETS = {
-    "yod": -60,
-    "qof": 50,
-    "final_kaf": 50,
-    "final_nun": 50,
-    "final_pe": 50,
-    "final_tsadi": 50
+    "yod": 0, "qof": 0, "final_kaf": 0, "final_nun": 0,
+    "final_pe": 0, "final_tsadi": 0
 }
 
 @app.route('/')
@@ -65,7 +62,7 @@ def upload():
     input_path = os.path.join(UPLOADS_DIR, filename)
     f.save(input_path)
 
-    # המרה לשחור-לבן
+    # המרה פשוטה לשחור-לבן (ללא התאמות נוספות)
     processed_name = f"proc_{filename}"
     processed_path = os.path.join(PROCESSED_DIR, processed_name)
     convert_to_black_white(input_path, processed_path)
@@ -77,7 +74,6 @@ def upload():
 
 @app.route('/backend/save_crop', methods=['POST'])
 def save_crop():
-    logs = []
     try:
         data = request.get_json()
         if not data:
@@ -95,68 +91,42 @@ def save_crop():
         except (ValueError, IndexError):
             return jsonify({"error": "invalid index"}), 400
 
-        # המרה מבסיס64
-        try:
-            _, b64 = imageData.split(',', 1)
-            binary = base64.b64decode(b64)
-        except Exception:
-            return jsonify({"error": "invalid base64"}), 400
-
+        # המרה מבסיס64 ל-PNG
+        _, b64 = imageData.split(',', 1)
+        binary = base64.b64decode(b64)
         tmp_path = os.path.join(PROCESSED_DIR, f"tmp_{eng_name}.png")
         with open(tmp_path, 'wb') as fh:
             fh.write(binary)
 
-        vertical = VERTICAL_OFFSETS.get(eng_name, 0)
+        # שמירה ישירה ל-glyphs בלי התאמות חכמות
         out_path = os.path.join(GLYPHS_DIR, f"{eng_name}.png")
-        try:
-            normalize_and_center_glyph(tmp_path, out_path, target_size=600, margin=50, vertical_offset=vertical)
-            logs.append(f"✅ האות '{eng_name}' נוספה לפונט בהצלחה")
-        except Exception as e:
-            shutil.copy(tmp_path, out_path)
-            logs.append(f"❌ בעיה בעיבוד האות '{eng_name}', נשמרה כ-PNG בלבד: {str(e)}")
+        shutil.copy(tmp_path, out_path)
 
-        print(logs[-1])
-
-        # המרת BW ל-SVG בתיקייה אחידה
+        # שמירה ל-BW
         bw_out = os.path.join(BW_DIR, f"{eng_name}.png")
-        shutil.copy(out_path, bw_out)
-        logs.append(f"✅ שמירה/המרת BW הצליחה עבור {eng_name}")
-        print(logs[-1])
+        shutil.copy(tmp_path, bw_out)
 
+        # המרת SVG
         svg_out = os.path.join(SVG_DIR, f"{eng_name}.svg")
-        try:
-            from svg_converter import convert_png_to_svg  # פונקציה מתוך svg_converter.py
-            convert_png_to_svg(bw_out, svg_out)
-            logs.append(f"✅ המרת SVG הצליחה עבור {eng_name}")
-        except Exception as e:
-            logs.append(f"❌ המרת SVG נכשלה עבור {eng_name}: {str(e)}")
+        convert_png_to_svg(bw_out, svg_out)
 
-        print(logs[-1])
-
-        # אם זו האות האחרונה, יצירת הפונט
+        # בדיקה: אם זו האות האחרונה, יצירת הפונט
+        font_ready = False
         if eng_name == LETTERS_ORDER[-1]:
-            logs.append("🎉 כל האותיות הושלמו! מתחילים יצירת הפונט...")
-            success, font_logs = generate_ttf(svg_folder=SVG_DIR, output_ttf=FONT_OUTPUT_PATH)
-            logs.extend(font_logs)
-            print(logs[-1])
-            return jsonify({"font_ready": os.path.exists(FONT_OUTPUT_PATH), "logs": logs})
+            success, _ = generate_ttf(svg_folder=SVG_DIR, output_ttf=FONT_OUTPUT_PATH)
+            font_ready = success
 
-        return jsonify({"saved": f"{eng_name}.png", "logs": logs})
-
+        return jsonify({"saved": f"{eng_name}.png", "font_ready": font_ready})
     except Exception as e:
-        logs.append(f"❌ שגיאה כללית: {str(e)}")
-        print(logs[-1])
-        return jsonify({"error": str(e), "logs": logs}), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/generate_font', methods=['POST'])
 def generate_font():
     try:
-        # יצירת הפונט מתוך כל קבצי ה-SVG בתיקייה
-        success, logs = generate_ttf(svg_folder=SVG_DIR, output_ttf=FONT_OUTPUT_PATH)
+        success, _ = generate_ttf(svg_folder=SVG_DIR, output_ttf=FONT_OUTPUT_PATH)
         return jsonify({
             "status": "success" if success else "error",
-            "download_url": url_for('download_font'),
-            "logs": logs
+            "download_url": url_for('download_font')
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
@@ -164,17 +134,8 @@ def generate_font():
 @app.route('/download_font')
 def download_font():
     if os.path.exists(FONT_OUTPUT_PATH):
-        return send_file(
-            FONT_OUTPUT_PATH,
-            as_attachment=True,
-            download_name="my_font.ttf",
-            mimetype="font/ttf"
-        )
+        return send_file(FONT_OUTPUT_PATH, as_attachment=True, download_name="my_font.ttf", mimetype="font/ttf")
     return "הפונט עדיין לא נוצר", 404
-
-@app.route('/api/font_status')
-def font_status():
-    return jsonify({"font_ready": os.path.exists(FONT_OUTPUT_PATH)})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
