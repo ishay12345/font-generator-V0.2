@@ -6,9 +6,8 @@ from fontTools.pens.transformPen import TransformPen
 from fontTools.misc.transform import Identity
 from xml.dom import minidom
 
-# מיפוי אותיות לעברית
-# generate_font.py
-
+# ===== מיפוי אותיות =====
+# כל האותיות הרגילות קודם, ואז הסופיות בסוף לפי הסדר: ך, ם, ן, ף, ץ
 letter_map = {
     "alef": 0x05D0,
     "bet": 0x05D1,
@@ -21,35 +20,37 @@ letter_map = {
     "tet": 0x05D8,
     "yod": 0x05D9,
     "kaf": 0x05DB,
-    "final_kaf": 0x05DA,
     "lamed": 0x05DC,
     "mem": 0x05DE,
-    "final_mem": 0x05DD,
     "nun": 0x05E0,
-    "final_nun": 0x05DF,
     "samekh": 0x05E1,
     "ayin": 0x05E2,
     "pe": 0x05E4,
-    "final_pe": 0x05E3,
     "tsadi": 0x05E6,
-    "final_tsadi": 0x05E5,
     "qof": 0x05E7,
     "resh": 0x05E8,
     "shin": 0x05E9,
-    "tav": 0x05EA
+    "tav": 0x05EA,
+    # אותיות סופיות
+    "final_kaf": 0x05DA,   # ך
+    "final_mem": 0x05DD,   # ם
+    "final_nun": 0x05DF,   # ן
+    "final_pe": 0x05E3,    # ף
+    "final_tsadi": 0x05E5  # ץ
 }
 
-
-
-# מיפוי הזזות אנכיות מותאמות לפי אות (פיקסלים)
+# ===== הזזות אנכיות מותאמות =====
 vertical_offsets = {
-    "yod": 500,         # הזזה מעלה (יחסית ל־coordinate system ב־SVG)
-    "qof": -200,        # הזזה למטה
+    "yod": 500,
+    "qof": -200,
     "final_kaf": -200,
     "final_nun": -200,
     "final_pe": -200,
     "final_tsadi": -200,
 }
+
+# ===== הזזה גלובלית ל־Y =====
+GLOBAL_Y_SHIFT = -400  # אפשר לשנות כדי "להוריד" או "להעלות" את הפונט כולו
 
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
@@ -98,8 +99,9 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.width = 600
             glyph.leftMargin = 40
             glyph.rightMargin = 40
-            vertical_shift = vertical_offsets.get(name, 0)
 
+            # הזזת ה־Y: מותאם אישית + גלובלי
+            vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
             pen = glyph.getPen()
             transform = Identity.translate(0, vertical_shift)
             tp = TransformPen(pen, transform)
