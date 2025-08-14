@@ -35,13 +35,13 @@ app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 LETTERS_ORDER = [
     "alef","bet","gimel","dalet","he","vav","zayin","het","tet",
     "yod","kaf","lamed","mem","nun","samekh","ayin","pe","tsadi",
-    "qof","resh","shin","tav","final_kaf","final_mem","final_nun",
-    "final_pe","final_tsadi"
+    "qof","resh","shin","tav","finalkaf","finalmem","finalnun",
+    "finalpe","finaltsadi"
 ]
 
 VERTICAL_OFFSETS = {
-    "yod": 0, "qof": 0, "final_kaf": 0, "final_nun": 0,
-    "final_pe": 0, "final_tsadi": 0
+    "yod": 0, "qof": 0, "finalkaf": 0, "finalnun": 0,
+    "finalpe": 0, "finaltsadi": 0
 }
 
 @app.route('/')
