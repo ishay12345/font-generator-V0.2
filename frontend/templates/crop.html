@@ -83,10 +83,9 @@
   .resize-handle.ne { top: -7px; right: -7px; cursor: nesw-resize; }
   .resize-handle.sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
   .resize-handle.se { bottom: -7px; right: -7px; cursor: nwse-resize; }
-  #controls { margin-top: 15px; }
+  #controls { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
   button {
     padding: 10px 18px;
-    margin: 0 6px;
     background-color: #3498db;
     border: none;
     color: white;
@@ -96,7 +95,7 @@
     transition: background-color 0.25s ease;
   }
   button:hover { background-color: #2980b9; }
-  #status { margin-top: 10px; font-weight: bold; color: green; }
+  #status { margin-top: 10px; font-weight: bold; color: green; min-height: 1.2em; }
   #progress-container {
     margin-top: 10px;
     width: 200px;
@@ -112,6 +111,7 @@
     background-color: #3498db;
     transition: width 0.1s;
   }
+  #download-font-btn { display: none; }
 </style>
 </head>
 <body>
@@ -138,8 +138,7 @@
 <div id="controls">
   <button id="save-crop">שמור אות נוכחית</button>
   <button id="undo-crop">בטל חיתוך אחרון</button>
-  <!-- כפתור הורדה לפונט -->
-  <a id="download-font-btn" href="/download_font" download="MyHebrewFont.ttf">
+  <a id="download-font-btn" href="/download_font" download="gHebrewHandwriting.ttf">
     <button>⬇ הורד את הפונט</button>
   </a>
 </div>
@@ -158,16 +157,13 @@ const statusEl = document.getElementById('status');
 const lettersBar = document.getElementById('letters-bar');
 const progressContainer = document.getElementById('progress-container');
 const progressBar = document.getElementById('progress-bar');
+const downloadBtn = document.getElementById('download-font-btn');
 
 const minWidth = 30;
 const minHeight = 30;
-let drag = false;
-let resize = false;
-let resizeDir = '';
-let startX, startY;
-let origX, origY, origWidth, origHeight;
-let lastCropPosition = null; // שמירה כדי למנוע שמירה באותו מקום
-let mustMoveBeforeSave = false;
+let drag = false, resize = false, resizeDir = '';
+let startX, startY, origX, origY, origWidth, origHeight;
+let lastCropPosition = null, mustMoveBeforeSave = false;
 
 const letters = ['א','ב','ג','ד','ה','ו','ז','ח','ט','י','כ','ל','מ','נ','ס','ע','פ','צ','ק','ר','ש','ת','ך','ם','ן','ף','ץ'];
 let currentIndex = 0;
@@ -190,212 +186,151 @@ function updateLettersBar() {
 }
 
 function clamp(val, min, max) { return Math.min(Math.max(val, min), max); }
-function getEventPos(e) {
-  if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  else return { x: e.clientX, y: e.clientY };
-}
+function getEventPos(e) { return e.touches ? { x:e.touches[0].clientX, y:e.touches[0].clientY } : { x:e.clientX, y:e.clientY }; }
 
 // גרירה
 cropRect.addEventListener('mousedown', startDrag);
-cropRect.addEventListener('touchstart', startDrag, { passive: false });
-function startDrag(e) {
-  if (e.target.classList.contains('resize-handle')) return;
+cropRect.addEventListener('touchstart', startDrag, { passive:false });
+function startDrag(e){
+  if(e.target.classList.contains('resize-handle')) return;
   e.preventDefault();
-  drag = true;
-  const pos = getEventPos(e);
-  startX = pos.x;
-  startY = pos.y;
-  const rect = cropRect.getBoundingClientRect();
-  origX = rect.left;
-  origY = rect.top;
+  drag=true;
+  const pos=getEventPos(e);
+  startX=pos.x; startY=pos.y;
+  const rect=cropRect.getBoundingClientRect();
+  origX=rect.left; origY=rect.top;
   window.addEventListener('mousemove', onDrag);
-  window.addEventListener('touchmove', onDrag, { passive: false });
+  window.addEventListener('touchmove', onDrag, {passive:false});
   window.addEventListener('mouseup', stopDrag);
   window.addEventListener('touchend', stopDrag);
 }
-function onDrag(e) {
-  if (!drag) return;
+function onDrag(e){
+  if(!drag) return;
   e.preventDefault();
-  const pos = getEventPos(e);
-  const dx = pos.x - startX;
-  const dy = pos.y - startY;
-  const containerRect = container.getBoundingClientRect();
-  const imgRect = img.getBoundingClientRect();
-  let newLeft = origX + dx;
-  let newTop = origY + dy;
-  newLeft = clamp(newLeft, imgRect.left, imgRect.right - cropRect.offsetWidth);
-  newTop = clamp(newTop, imgRect.top, imgRect.bottom - cropRect.offsetHeight);
-  cropRect.style.left = (newLeft - containerRect.left) + 'px';
-  cropRect.style.top = (newTop - containerRect.top) + 'px';
-  mustMoveBeforeSave = false; // שינינו מיקום, אפשר לשמור שוב
+  const pos=getEventPos(e);
+  const dx=pos.x-startX, dy=pos.y-startY;
+  const containerRect=container.getBoundingClientRect(), imgRect=img.getBoundingClientRect();
+  let newLeft=origX+dx, newTop=origY+dy;
+  newLeft=clamp(newLeft, imgRect.left, imgRect.right-cropRect.offsetWidth);
+  newTop=clamp(newTop, imgRect.top, imgRect.bottom-cropRect.offsetHeight);
+  cropRect.style.left=(newLeft-containerRect.left)+'px';
+  cropRect.style.top=(newTop-containerRect.top)+'px';
+  mustMoveBeforeSave=false;
 }
-function stopDrag() {
-  drag = false;
-  window.removeEventListener('mousemove', onDrag);
-  window.removeEventListener('touchmove', onDrag);
-  window.removeEventListener('mouseup', stopDrag);
-  window.removeEventListener('touchend', stopDrag);
-}
+function stopDrag(){ drag=false; window.removeEventListener('mousemove',onDrag); window.removeEventListener('touchmove',onDrag); window.removeEventListener('mouseup',stopDrag); window.removeEventListener('touchend',stopDrag); }
 
 // שינוי גודל
-document.querySelectorAll('.resize-handle').forEach(handle => {
-  handle.addEventListener('mousedown', startResize);
-  handle.addEventListener('touchstart', startResize, { passive: false });
+document.querySelectorAll('.resize-handle').forEach(h=>{
+  h.addEventListener('mousedown', startResize);
+  h.addEventListener('touchstart', startResize, {passive:false});
 });
-function startResize(e) {
+function startResize(e){
   e.preventDefault();
-  resize = true;
-  resizeDir = [...e.target.classList].find(c => ['nw','ne','sw','se'].includes(c));
-  const pos = getEventPos(e);
-  startX = pos.x;
-  startY = pos.y;
-  const rect = cropRect.getBoundingClientRect();
-  origX = rect.left;
-  origY = rect.top;
-  origWidth = cropRect.offsetWidth;
-  origHeight = cropRect.offsetHeight;
+  resize=true;
+  resizeDir=[...e.target.classList].find(c=>['nw','ne','sw','se'].includes(c));
+  const pos=getEventPos(e);
+  startX=pos.x; startY=pos.y;
+  const rect=cropRect.getBoundingClientRect();
+  origX=rect.left; origY=rect.top;
+  origWidth=cropRect.offsetWidth; origHeight=cropRect.offsetHeight;
   window.addEventListener('mousemove', onResize);
-  window.addEventListener('touchmove', onResize, { passive: false });
+  window.addEventListener('touchmove', onResize, {passive:false});
   window.addEventListener('mouseup', stopResize);
   window.addEventListener('touchend', stopResize);
 }
-function onResize(e) {
-  if (!resize) return;
+function onResize(e){
+  if(!resize) return;
   e.preventDefault();
-  const pos = getEventPos(e);
-  let dx = pos.x - startX;
-  let dy = pos.y - startY;
-  const containerRect = container.getBoundingClientRect();
-  const imgRect = img.getBoundingClientRect();
-  let newLeft = parseInt(cropRect.style.left);
-  let newTop = parseInt(cropRect.style.top);
-  let newWidth = origWidth;
-  let newHeight = origHeight;
-  if (resizeDir.includes('n')) { newTop += dy; newHeight -= dy; }
-  if (resizeDir.includes('w')) { newLeft += dx; newWidth -= dx; }
-  if (resizeDir.includes('e')) newWidth += dx;
-  if (resizeDir.includes('s')) newHeight += dy;
-  newWidth = Math.max(minWidth, newWidth);
-  newHeight = Math.max(minHeight, newHeight);
-  newLeft = clamp(newLeft, imgRect.left - containerRect.left, imgRect.right - containerRect.left - newWidth);
-  newTop = clamp(newTop, imgRect.top - containerRect.top, imgRect.bottom - containerRect.top - newHeight);
-  cropRect.style.left = newLeft + 'px';
-  cropRect.style.top = newTop + 'px';
-  cropRect.style.width = newWidth + 'px';
-  cropRect.style.height = newHeight + 'px';
-  mustMoveBeforeSave = false;
+  const pos=getEventPos(e);
+  let dx=pos.x-startX, dy=pos.y-startY;
+  const containerRect=container.getBoundingClientRect(), imgRect=img.getBoundingClientRect();
+  let newLeft=parseInt(cropRect.style.left), newTop=parseInt(cropRect.style.top), newWidth=origWidth, newHeight=origHeight;
+  if(resizeDir.includes('n')){ newTop+=dy; newHeight-=dy; }
+  if(resizeDir.includes('w')){ newLeft+=dx; newWidth-=dx; }
+  if(resizeDir.includes('e')) newWidth+=dx;
+  if(resizeDir.includes('s')) newHeight+=dy;
+  newWidth=Math.max(minWidth,newWidth);
+  newHeight=Math.max(minHeight,newHeight);
+  newLeft=clamp(newLeft,imgRect.left-containerRect.left,imgRect.right-containerRect.left-newWidth);
+  newTop=clamp(newTop,imgRect.top-containerRect.top,imgRect.bottom-containerRect.top-newHeight);
+  cropRect.style.left=newLeft+'px';
+  cropRect.style.top=newTop+'px';
+  cropRect.style.width=newWidth+'px';
+  cropRect.style.height=newHeight+'px';
+  mustMoveBeforeSave=false;
 }
-function stopResize() {
-  resize = false;
-  window.removeEventListener('mousemove', onResize);
-  window.removeEventListener('touchmove', onResize);
-  window.removeEventListener('mouseup', stopResize);
-  window.removeEventListener('touchend', stopResize);
-}
+function stopResize(){ resize=false; window.removeEventListener('mousemove',onResize); window.removeEventListener('touchmove',onResize); window.removeEventListener('mouseup',stopResize); window.removeEventListener('touchend',stopResize); }
 
 // עיבוד לשחור-לבן
-function toGrayscale(canvas) {
-  const ctx = canvas.getContext('2d');
-  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const data = imgData.data;
-  for (let i = 0; i < data.length; i += 4) {
-    const avg = (data[i] + data[i+1] + data[i+2]) / 3;
-    data[i] = data[i+1] = data[i+2] = avg;
+function toGrayscale(canvas){
+  const ctx=canvas.getContext('2d');
+  const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+  const data=imgData.data;
+  for(let i=0;i<data.length;i+=4){
+    const avg=(data[i]+data[i+1]+data[i+2])/3;
+    data[i]=data[i+1]=data[i+2]=avg;
   }
-  ctx.putImageData(imgData, 0, 0);
+  ctx.putImageData(imgData,0,0);
   return canvas;
 }
 
-// הדמיית המרה ל-SVG
-function simulateSvgConversion(canvas) {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve(canvas.toDataURL('image/png')); // פה אפשר להחליף בממש המרת SVG
-    }, 300);
-  });
-}
-
 // שמירת חיתוך
-document.getElementById('save-crop').addEventListener('click', () => {
-  if (!img.naturalWidth) return alert('התמונה עדיין בטעינה');
-  if (mustMoveBeforeSave) return alert('יש להזיז את הריבוע לפני שמירת אות נוספת.');
+document.getElementById('save-crop').addEventListener('click',()=>{
+  if(!img.naturalWidth) return alert('התמונה עדיין בטעינה');
+  if(mustMoveBeforeSave) return alert('יש להזיז את הריבוע לפני שמירת אות נוספת.');
 
-  const cropStyle = window.getComputedStyle(cropRect);
-  const cropX = parseInt(cropStyle.left);
-  const cropY = parseInt(cropStyle.top);
-  const cropW = parseInt(cropStyle.width);
-  const cropH = parseInt(cropStyle.height);
+  const cropStyle=window.getComputedStyle(cropRect);
+  const cropX=parseInt(cropStyle.left), cropY=parseInt(cropStyle.top);
+  const cropW=parseInt(cropStyle.width), cropH=parseInt(cropStyle.height);
 
-  // מניעת שמירה באותו מיקום
-  const cropPosStr = `${cropX},${cropY},${cropW},${cropH}`;
-  if (lastCropPosition === cropPosStr) {
-    return alert('לא ניתן לחתוך שוב באותו מיקום. יש להזיז את הריבוע.');
-  }
-  lastCropPosition = cropPosStr;
+  const cropPosStr=`${cropX},${cropY},${cropW},${cropH}`;
+  if(lastCropPosition===cropPosStr) return alert('לא ניתן לחתוך שוב באותו מיקום. יש להזיז את הריבוע.');
+  lastCropPosition=cropPosStr;
 
-  const scaleX = img.naturalWidth / img.width;
-  const scaleY = img.naturalHeight / img.height;
-  const realX = Math.round(cropX * scaleX);
-  const realY = Math.round(cropY * scaleY);
-  const realW = Math.round(cropW * scaleX);
-  const realH = Math.round(cropH * scaleY);
-  const canvas = document.createElement('canvas');
-  canvas.width = realW;
-  canvas.height = realH;
-  const ctx = canvas.getContext('2d');
+  const scaleX=img.naturalWidth/img.width, scaleY=img.naturalHeight/img.height;
+  const realX=Math.round(cropX*scaleX), realY=Math.round(cropY*scaleY);
+  const realW=Math.round(cropW*scaleX), realH=Math.round(cropH*scaleY);
+  const canvas=document.createElement('canvas');
+  canvas.width=realW; canvas.height=realH;
+  const ctx=canvas.getContext('2d');
   ctx.drawImage(img, realX, realY, realW, realH, 0, 0, realW, realH);
 
-  // שלב 1: טעינת progress bar
-  progressContainer.style.display = 'block';
-  progressBar.style.width = '0%';
-  let progress = 0;
-  const interval = setInterval(() => {
-    progress += 20;
-    progressBar.style.width = progress + '%';
-    if (progress >= 100) clearInterval(interval);
-  }, 80);
+  progressContainer.style.display='block';
+  progressBar.style.width='0%';
+  let progress=0;
+  const interval=setInterval(()=>{ progress+=20; progressBar.style.width=progress+'%'; if(progress>=100) clearInterval(interval); }, 80);
 
-  // שלב 2: שחור לבן ואז המרה ל-SVG
-  setTimeout(() => {
-    toGrayscale(canvas);
-    simulateSvgConversion(canvas).then(svgDataUrl => {
-      fetch('/backend/save_crop', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: letters[currentIndex],
-          index: currentIndex,
-          data: svgDataUrl
-        })
-      })
-      .then(res => res.json())
-      .then(json => {
-        progressContainer.style.display = 'none';
-        if(json.error) return alert('שגיאה בשמירה: ' + json.error);
-        history.push(currentIndex);
-        lettersBar.children[currentIndex].classList.add('done');
-        mustMoveBeforeSave = true; // מחייב להזיז לפני הבאה
-        currentIndex++;
-        updateLettersBar();
+  toGrayscale(canvas);
 
-        if (currentIndex >= letters.length) {
-          alert('🎉 מעולה! סיימת את השלב האחרון');
-          window.location.href = '/download_page.html';
-        } else {
-          statusEl.textContent = `✅ האות "${letters[currentIndex-1]}" נשמרה בהצלחה! חתוך את "${letters[currentIndex]}"`;
-        }
-      })
-      .catch(err => alert('שגיאה בשליחה: ' + err));
-    });
-  }, 500);
+  canvas.toDataURL('image/png'); // DataURL
+  fetch('/backend/save_crop',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name:letters[currentIndex], index:currentIndex, data:canvas.toDataURL('image/png')})
+  }).then(res=>res.json())
+    .then(json=>{
+      progressContainer.style.display='none';
+      if(json.error) return alert('שגיאה בשמירה: '+json.error);
+      history.push(currentIndex);
+      lettersBar.children[currentIndex].classList.add('done');
+      mustMoveBeforeSave=true;
+      currentIndex++;
+      updateLettersBar();
+      if(json.font_ready){
+        downloadBtn.style.display='inline-block';
+        statusEl.textContent='🎉 כל האותיות נשמרו! הפונט מוכן להורדה.';
+      } else {
+        statusEl.textContent=`✅ האות "${letters[currentIndex-1]}" נשמרה! חתוך את "${letters[currentIndex]}"`;
+      }
+    }).catch(err=>alert('שגיאה בשליחה: '+err));
 });
 
 // Undo חיתוך
-document.getElementById('undo-crop').addEventListener('click', () => {
-  if(history.length === 0) return;
-  currentIndex = history.pop();
+document.getElementById('undo-crop').addEventListener('click',()=>{
+  if(history.length===0) return;
+  currentIndex=history.pop();
   lettersBar.children[currentIndex].classList.remove('done');
-  statusEl.textContent = `🔄 חיתוך האות "${letters[currentIndex]}" בוטל.`;
+  statusEl.textContent=`🔄 חיתוך האות "${letters[currentIndex]}" בוטל.`;
   updateLettersBar();
 });
 </script>
