@@ -153,10 +153,10 @@ def save_crop():
             logs.append(f"❌ שגיאה בהמרת SVG עבור {eng_name}: {result_svg.stderr}")
             print(logs[-1])
 
-        # אם זו האות האחרונה מפנה ל־done
+        # אם זו האות האחרונה, מחזיר JSON עם סטטוס מוכן לפונט
         if eng_name == "final_tsadi":
-            logs.append("🎉 כל האותיות הושלמו! מפנה לעמוד הסיום...")
-            return jsonify({"redirect": url_for('done_page'), "logs": logs, "font_ready": os.path.exists(OUTPUT_TTF)})
+            logs.append("🎉 כל האותיות הושלמו! הפונט מוכן להורדה")
+            return jsonify({"font_ready": os.path.exists(OUTPUT_TTF), "logs": logs})
 
         return jsonify({"saved": f"{eng_name}.png", "logs": logs})
 
@@ -164,13 +164,6 @@ def save_crop():
         logs.append(f"❌ שגיאה כללית: {str(e)}")
         print(logs[-1])
         return jsonify({"error": str(e), "logs": logs}), 500
-
-# עמוד סיום עם כפתור הורדה
-@app.route('/done')
-def done_page():
-    font_ready = os.path.exists(OUTPUT_TTF)
-    download_url = url_for('download_font')
-    return render_template('download_page.html', font_ready=font_ready, download_url=download_url)
 
 # API סטטוס לפונט
 @app.route('/api/font_status')
@@ -181,7 +174,12 @@ def font_status():
 @app.route('/download_font')
 def download_font():
     if os.path.exists(OUTPUT_TTF):
-        return send_file(OUTPUT_TTF, as_attachment=True, download_name="gHebrewHandwriting.ttf", mimetype="font/ttf")
+        return send_file(
+            OUTPUT_TTF,
+            as_attachment=True,
+            download_name="gHebrewHandwriting.ttf",
+            mimetype="font/ttf"
+        )
     return "הפונט עדיין לא נוצר", 404
 
 if __name__ == '__main__':
