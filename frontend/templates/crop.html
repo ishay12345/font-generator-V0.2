@@ -257,7 +257,7 @@ function onResize(e){
 }
 function stopResize(){resize=false; window.removeEventListener('mousemove',onResize); window.removeEventListener('touchmove',onResize); window.removeEventListener('mouseup',stopResize); window.removeEventListener('touchend',stopResize);}
 
-// שמירת חיתוך מדויק מהתמונה המקורית
+// שמירת חיתוך ל-SVG אחיד
 document.getElementById('save-crop').addEventListener('click', async () => {
     if(!img.naturalWidth) return alert('התמונה עדיין בטעינה');
     if(mustMoveBeforeSave) return alert('יש להזיז את הריבוע לפני שמירת אות נוספת.');
@@ -309,12 +309,12 @@ document.getElementById('save-crop').addEventListener('click', async () => {
     lettersBar.children[currentIndex].classList.add('done');
     mustMoveBeforeSave=true;
     currentIndex++;
+    updateLettersBar();
+
     if(currentIndex>=letters.length){
-        updateLettersBar();
         statusEl.textContent='🎉 כל האותיות נשמרו! לחץ על "צור פונט" כדי להפיק את הפונט.';
         generateBtn.style.display='inline-block';
     } else {
-        updateLettersBar();
         statusEl.textContent=`✅ האות "${letters[currentIndex-1]}" נשמרה! חתוך את "${letters[currentIndex]}"`;
     }
 });
