@@ -41,23 +41,19 @@ letter_map = {
 # ===== הזזות אנכיות מותאמות =====
 vertical_offsets = {
     "yod": 500,
-    "qof": -200,
-    "finalkaf": -200,
-    "finalnun": -200,
-    "finalpe": -200,
-    "finaltsadi": -200,
+    "qof": -250,
 }
 
 # ===== הזזה גלובלית ל־Y =====
 GLOBAL_Y_SHIFT = -400  # ניתן לשנות
 PADDING_GENERAL = 35    # פדינג כללי
-PADDING_LARGE = 80      # פדינג אנכי מוגדל לאותיות ך ף ץ
+PADDING_LARGE = 150      # פדינג אנכי מוגדל לאותיות ך ף ץ
 
 # ===== מיפוי רווח אופקי מותאם עבור אותיות צמודות =====
 HORIZONTAL_ADJUST = {
-    ("yod", "tsadi"): 50,
-    ("shin", "tav"): 50,
-    ("kaf", "alef"): 30
+    ("yod", "kaf"): 80,
+    ("shin", "tav"): 60,
+    ("kaf", "lamed"): 30
 }
 
 def generate_ttf(svg_folder, output_ttf):
