@@ -31,21 +31,21 @@ letter_map = {
     "shin": 0x05E9,
     "tav": 0x05EA,
     # אותיות סופיות
-    "final_kaf": 0x05DA,   # ך
-    "final_mem": 0x05DD,   # ם
-    "final_nun": 0x05DF,   # ן
-    "final_pe": 0x05E3,    # ף
-    "final_tsadi": 0x05E5  # ץ
+    "finalkaf": 0x05DA,   # ך
+    "finalmem": 0x05DD,   # ם
+    "finalnun": 0x05DF,   # ן
+    "finalpe": 0x05E3,    # ף
+    "finaltsadi": 0x05E5  # ץ
 }
 
 # ===== הזזות אנכיות מותאמות =====
 vertical_offsets = {
     "yod": 500,
     "qof": -200,
-    "final_kaf": -200,
-    "final_nun": -200,
-    "final_pe": -200,
-    "final_tsadi": -200,
+    "finalkaf": -200,
+    "finalnun": -200,
+    "finalpe": -200,
+    "finaltsadi": -200,
 }
 
 # ===== הזזה גלובלית ל־Y =====
@@ -139,11 +139,11 @@ def generate_ttf(svg_folder, output_ttf):
 
     # ===== טעינת האותיות הסופיות ידנית מהמיקום הקבוע =====
     final_svgs = {
-        "final_kaf": "app/backend/static/svg_letters/final_kaf.svg",
-        "final_mem": "app/backend/static/svg_letters/final_mem.svg",
-        "final_nun": "app/backend/static/svg_letters/final_nun.svg",
-        "final_pe": "app/backend/static/svg_letters/final_pe.svg",
-        "final_tsadi": "app/backend/static/svg_letters/final_tsadi.svg"
+        "final_kaf": "app/backend/static/svg_letters/finalkaf.svg",
+        "final_mem": "app/backend/static/svg_letters/finalmem.svg",
+        "final_nun": "app/backend/static/svg_letters/finalnun.svg",
+        "final_pe": "app/backend/static/svg_letters/finalpe.svg",
+        "final_tsadi": "app/backend/static/svg_letters/finaltsadi.svg"
     }
 
     for name, path in final_svgs.items():
