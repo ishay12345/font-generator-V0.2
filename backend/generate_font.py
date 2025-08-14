@@ -7,7 +7,8 @@ from fontTools.misc.transform import Identity
 from xml.dom import minidom
 
 # מיפוי אותיות לעברית
-letter_map = {
+# generate_font.py
+
 letter_map = {
     "alef": 0x05D0,
     "bet": 0x05D1,
@@ -35,7 +36,7 @@ letter_map = {
     "qof": 0x05E7,
     "resh": 0x05E8,
     "shin": 0x05E9,
-    "tav": 0x05EA,
+    "tav": 0x05EA
 }
 
 }
