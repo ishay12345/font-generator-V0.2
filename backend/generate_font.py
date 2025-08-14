@@ -49,15 +49,23 @@ vertical_offsets = {
 }
 
 # ===== הזזה גלובלית ל־Y =====
-GLOBAL_Y_SHIFT = -480  # אפשר לשנות כדי "להוריד" או "להעלות" את הפונט כולו
-PADDING = 35  # מספר פיקסלים לפדינג סביב כל אות
+GLOBAL_Y_SHIFT = -400  # ניתן לשנות
+PADDING_GENERAL = 35    # פדינג כללי
+PADDING_LARGE = 80      # פדינג אנכי מוגדל לאותיות ך ף ץ
+
+# ===== מיפוי רווח אופקי מותאם עבור אותיות צמודות =====
+HORIZONTAL_ADJUST = {
+    ("yod", "tsadi"): 50,
+    ("shin", "tav"): 50,
+    ("kaf", "alef"): 30
+}
 
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
     font = Font()
-    font.info.familyName = "gHebrew Handwriting"
+    font.info.familyName = "uiHebrew Handwriting"
     font.info.styleName = "Regular"
-    font.info.fullName = "gHebrew Handwriting"
+    font.info.fullName = "uiHebrew Handwriting"
     font.info.unitsPerEm = 1000
     font.info.ascender = 800
     font.info.descender = -200
@@ -101,10 +109,11 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.leftMargin = 40
             glyph.rightMargin = 40
 
-            # הזזת ה־Y + פדינג
+            # בחירת פדינג: רגיל או מוגדל לאותיות סופיות מסוימות
+            padding = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
             pen = glyph.getPen()
-            transform = Identity.translate(PADDING, vertical_shift - PADDING)
+            transform = Identity.translate(padding, vertical_shift - padding)
             tp = TransformPen(pen, transform)
 
             successful_paths = 0
@@ -165,10 +174,10 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.leftMargin = 40
             glyph.rightMargin = 40
 
-            # הזזת ה־Y + פדינג
+            padding = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
             pen = glyph.getPen()
-            transform = Identity.translate(PADDING, vertical_shift - PADDING)
+            transform = Identity.translate(padding, vertical_shift - padding)
             tp = TransformPen(pen, transform)
 
             for path_element in paths:
