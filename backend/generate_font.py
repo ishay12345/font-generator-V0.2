@@ -49,7 +49,8 @@ vertical_offsets = {
 }
 
 # ===== הזזה גלובלית ל־Y =====
-GLOBAL_Y_SHIFT = -400  # אפשר לשנות כדי "להוריד" או "להעלות" את הפונט כולו
+GLOBAL_Y_SHIFT = -480  # אפשר לשנות כדי "להוריד" או "להעלות" את הפונט כולו
+PADDING = 35  # מספר פיקסלים לפדינג סביב כל אות
 
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
@@ -100,9 +101,10 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.leftMargin = 40
             glyph.rightMargin = 40
 
+            # הזזת ה־Y + פדינג
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
             pen = glyph.getPen()
-            transform = Identity.translate(0, vertical_shift)
+            transform = Identity.translate(PADDING, vertical_shift - PADDING)
             tp = TransformPen(pen, transform)
 
             successful_paths = 0
@@ -139,11 +141,11 @@ def generate_ttf(svg_folder, output_ttf):
 
     # ===== טעינת האותיות הסופיות ידנית מהמיקום הקבוע =====
     final_svgs = {
-        "final_kaf": "app/backend/static/svg_letters/finalkaf.svg",
-        "final_mem": "app/backend/static/svg_letters/finalmem.svg",
-        "final_nun": "app/backend/static/svg_letters/finalnun.svg",
-        "final_pe": "app/backend/static/svg_letters/finalpe.svg",
-        "final_tsadi": "app/backend/static/svg_letters/finaltsadi.svg"
+        "finalkaf": "app/backend/static/svg_letters/finalkaf.svg",
+        "finalmem": "app/backend/static/svg_letters/finalmem.svg",
+        "finalnun": "app/backend/static/svg_letters/finalnun.svg",
+        "finalpe": "app/backend/static/svg_letters/finalpe.svg",
+        "finaltsadi": "app/backend/static/svg_letters/finaltsadi.svg"
     }
 
     for name, path in final_svgs.items():
@@ -162,9 +164,11 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.width = 600
             glyph.leftMargin = 40
             glyph.rightMargin = 40
+
+            # הזזת ה־Y + פדינג
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
             pen = glyph.getPen()
-            transform = Identity.translate(0, vertical_shift)
+            transform = Identity.translate(PADDING, vertical_shift - PADDING)
             tp = TransformPen(pen, transform)
 
             for path_element in paths:
