@@ -303,26 +303,31 @@ document.getElementById('save-crop').addEventListener('click',()=>{
   toGrayscale(canvas);
 
   canvas.toDataURL('image/png'); // DataURL
-  fetch('/backend/save_crop',{
+fetch('/backend/save_crop',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({name:letters[currentIndex], index:currentIndex, data:canvas.toDataURL('image/png')})
-  }).then(res=>res.json())
-    .then(json=>{
-      progressContainer.style.display='none';
-      if(json.error) return alert('שגיאה בשמירה: '+json.error);
-      history.push(currentIndex);
-      lettersBar.children[currentIndex].classList.add('done');
-      mustMoveBeforeSave=true;
-      currentIndex++;
-      updateLettersBar();
-      if(json.font_ready){
+}).then(res=>res.json())
+  .then(json=>{
+    progressContainer.style.display='none';
+    if(json.error) return alert('שגיאה בשמירה: '+json.error);
+    history.push(currentIndex);
+    lettersBar.children[currentIndex].classList.add('done');
+    mustMoveBeforeSave=true;
+
+    currentIndex++;
+    if(currentIndex >= letters.length){
+        // כל האותיות נשמרו
+        updateLettersBar();
         downloadBtn.style.display='inline-block';
         statusEl.textContent='🎉 כל האותיות נשמרו! הפונט מוכן להורדה.';
-      } else {
+    } else {
+        // יש עוד אותיות
+        updateLettersBar();
         statusEl.textContent=`✅ האות "${letters[currentIndex-1]}" נשמרה! חתוך את "${letters[currentIndex]}"`;
-      }
-    }).catch(err=>alert('שגיאה בשליחה: '+err));
+    }
+  }).catch(err=>alert('שגיאה בשליחה: '+err));
+
 });
 
 // Undo חיתוך
