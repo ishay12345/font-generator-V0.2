@@ -63,10 +63,10 @@ const progressBar = document.getElementById('progress-bar');
 const generateBtn = document.getElementById("generateFontBtn");
 const downloadBtn = document.getElementById("downloadFontBtn");
 
-const minWidth=30,minHeight=30;
-let drag=false, resize=false, resizeDir='', startX,startY,origX,origY,origWidth,origHeight,lastCropPosition=null,mustMoveBeforeSave=false;
+const minWidth=30, minHeight=30;
+let drag=false, resize=false, resizeDir='', startX,startY, origX,origY, origWidth,origHeight, lastCropPosition=null, mustMoveBeforeSave=false;
 const letters=['א','ב','ג','ד','ה','ו','ז','ח','ט','י','כ','ל','מ','נ','ס','ע','פ','צ','ק','ר','ש','ת','ך','ם','ן','ף','ץ'];
-let currentIndex=0,history=[];
+let currentIndex=0, history=[];
 
 // בניית האותיות
 letters.forEach((ltr,i)=>{
@@ -83,19 +83,115 @@ function getEventPos(e){return e.touches?{x:e.touches[0].clientX,y:e.touches[0].
 // גרירה
 cropRect.addEventListener('mousedown', startDrag);
 cropRect.addEventListener('touchstart', startDrag, {passive:false});
-function startDrag(e){if(e.target.classList.contains('resize-handle')) return; e.preventDefault(); drag=true; const pos=getEventPos(e); startX=pos.x; startY=pos.y; const rect=cropRect.getBoundingClientRect(); origX=rect.left; origY=rect.top; window.addEventListener('mousemove',onDrag); window.addEventListener('touchmove',onDrag,{passive:false}); window.addEventListener('mouseup',stopDrag); window.addEventListener('touchend',stopDrag);}
-function onDrag(e){if(!drag) return; e.preventDefault(); const pos=getEventPos(e); const dx=pos.x-startX,dy=pos.y-startY; const containerRect=container.getBoundingClientRect(); const imgRect=img.getBoundingClientRect(); let newLeft=origX+dx,newTop=origY+dy; newLeft=clamp(newLeft,imgRect.left,imgRect.right-cropRect.offsetWidth); newTop=clamp(newTop,imgRect.top,imgRect.bottom-cropRect.offsetHeight); cropRect.style.left=(newLeft-containerRect.left)+'px'; cropRect.style.top=(newTop-containerRect.top)+'px'; mustMoveBeforeSave=false;}
-function stopDrag(){drag=false; window.removeEventListener('mousemove',onDrag); window.removeEventListener('touchmove',onDrag); window.removeEventListener('mouseup',stopDrag); window.removeEventListener('touchend',stopDrag);}
+function startDrag(e){
+    if(e.target.classList.contains('resize-handle')) return;
+    e.preventDefault();
+    drag=true;
+    const pos=getEventPos(e);
+    startX=pos.x; startY=pos.y;
+    const rect=cropRect.getBoundingClientRect();
+    origX=rect.left; origY=rect.top;
+    window.addEventListener('mousemove',onDrag);
+    window.addEventListener('touchmove',onDrag,{passive:false});
+    window.addEventListener('mouseup',stopDrag);
+    window.addEventListener('touchend',stopDrag);
+}
+function onDrag(e){
+    if(!drag) return;
+    e.preventDefault();
+    const pos=getEventPos(e);
+    const dx=pos.x-startX, dy=pos.y-startY;
+    const containerRect=container.getBoundingClientRect();
+    const imgRect=img.getBoundingClientRect();
+    let newLeft=origX+dx, newTop=origY+dy;
+
+    // הגבלות
+    newLeft=clamp(newLeft, imgRect.left, imgRect.right-cropRect.offsetWidth);
+    newTop=clamp(newTop, imgRect.top, imgRect.bottom-cropRect.offsetHeight);
+
+    cropRect.style.left=(newLeft-containerRect.left)+'px';
+    cropRect.style.top=(newTop-containerRect.top)+'px';
+    mustMoveBeforeSave=false;
+}
+function stopDrag(){
+    drag=false;
+    window.removeEventListener('mousemove',onDrag);
+    window.removeEventListener('touchmove',onDrag);
+    window.removeEventListener('mouseup',stopDrag);
+    window.removeEventListener('touchend',stopDrag);
+}
 
 // שינוי גודל
-document.querySelectorAll('.resize-handle').forEach(h=>{h.addEventListener('mousedown', startResize); h.addEventListener('touchstart',startResize,{passive:false});});
-function startResize(e){e.preventDefault(); resize=true; resizeDir=[...e.target.classList].find(c=>['nw','ne','sw','se'].includes(c)); const pos=getEventPos(e); startX=pos.x; startY=pos.y; const rect=cropRect.getBoundingClientRect(); origX=rect.left; origY=rect.top; origWidth=cropRect.offsetWidth; origHeight=cropRect.offsetHeight; window.addEventListener('mousemove',onResize); window.addEventListener('touchmove',onResize,{passive:false}); window.addEventListener('mouseup',stopResize); window.addEventListener('touchend',stopResize);}
-function onResize(e){if(!resize) return; e.preventDefault(); const pos=getEventPos(e); let dx=pos.x-startX,dy=pos.y-startY; const containerRect=container.getBoundingClientRect(); const imgRect=img.getBoundingClientRect(); let newLeft=parseInt(cropRect.style.left), newTop=parseInt(cropRect.style.top), newWidth=origWidth, newHeight=origHeight; if(resizeDir.includes('n')){ newTop+=dy; newHeight-=dy; } if(resizeDir.includes('w')){ newLeft+=dx; newWidth-=dx; } if(resizeDir.includes('e')) newWidth+=dx; if(resizeDir.includes('s')) newHeight+=dy; newWidth=Math.max(minWidth,newWidth); newHeight=Math.max(minHeight,newHeight); newLeft=clamp(newLeft,imgRect.left-containerRect.left,imgRect.right-containerRect.left-newWidth); newTop=clamp(newTop,imgRect.top-containerRect.top,imgRect.bottom-containerRect.top-newHeight); cropRect.style.left=newLeft+'px'; cropRect.style.top=newTop+'px'; cropRect.style.width=newWidth+'px'; cropRect.style.height=newHeight+'px'; mustMoveBeforeSave=false;}
+document.querySelectorAll('.resize-handle').forEach(h=>{
+    h.addEventListener('mousedown', startResize);
+    h.addEventListener('touchstart', startResize,{passive:false});
+});
+function startResize(e){
+    e.preventDefault();
+    resize=true;
+    resizeDir=[...e.target.classList].find(c=>['nw','ne','sw','se'].includes(c));
+    const pos=getEventPos(e);
+    startX=pos.x; startY=pos.y;
+    const rect=cropRect.getBoundingClientRect();
+    origX=rect.left; origY=rect.top;
+    origWidth=cropRect.offsetWidth; origHeight=cropRect.offsetHeight;
+    window.addEventListener('mousemove',onResize);
+    window.addEventListener('touchmove',onResize,{passive:false});
+    window.addEventListener('mouseup',stopResize);
+    window.addEventListener('touchend',stopResize);
+}
+function onResize(e){
+    if(!resize) return;
+    e.preventDefault();
+    const pos=getEventPos(e);
+    let dx=pos.x-startX, dy=pos.y-startY;
+    const containerRect=container.getBoundingClientRect();
+    const imgRect=img.getBoundingClientRect();
+
+    let newLeft=parseInt(cropRect.style.left), newTop=parseInt(cropRect.style.top), newWidth=origWidth, newHeight=origHeight;
+
+    if(resizeDir.includes('n')){
+        newTop += dy;
+        newHeight -= dy;
+    }
+    if(resizeDir.includes('w')){
+        newLeft += dx;
+        newWidth -= dx;
+    }
+    if(resizeDir.includes('e')){
+        newWidth += dx;
+    }
+    if(resizeDir.includes('s')){
+        newHeight += dy;
+    }
+
+    // הגבלות מינימום
+    newWidth = Math.max(minWidth,newWidth);
+    newHeight = Math.max(minHeight,newHeight);
+
+    // הגבלות על התמונה
+    newLeft = clamp(newLeft, 0, imgRect.width - newWidth);
+    newTop = clamp(newTop, 0, imgRect.height - newHeight);
+
+    cropRect.style.left=newLeft+'px';
+    cropRect.style.top=newTop+'px';
+    cropRect.style.width=newWidth+'px';
+    cropRect.style.height=newHeight+'px';
+    mustMoveBeforeSave=false;
+}
+function stopResize(){
+    resize=false;
+    window.removeEventListener('mousemove',onResize);
+    window.removeEventListener('touchmove',onResize);
+    window.removeEventListener('mouseup',stopResize);
+    window.removeEventListener('touchend',stopResize);
+}
 
 // שמירה
 document.getElementById('save-crop').addEventListener('click', async()=>{
     if(!img.naturalWidth) return alert('התמונה עדיין בטעינה');
     if(mustMoveBeforeSave) return alert('יש להזיז את הריבוע לפני שמירת אות נוספת.');
+
     const cropRectStyle=cropRect.getBoundingClientRect();
     const imgRect=img.getBoundingClientRect();
 
