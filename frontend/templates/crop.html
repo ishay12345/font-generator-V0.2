@@ -91,25 +91,30 @@ function stopDrag(){drag=false; window.removeEventListener('mousemove',onDrag); 
 document.querySelectorAll('.resize-handle').forEach(h=>{h.addEventListener('mousedown', startResize); h.addEventListener('touchstart',startResize,{passive:false});});
 function startResize(e){e.preventDefault(); resize=true; resizeDir=[...e.target.classList].find(c=>['nw','ne','sw','se'].includes(c)); const pos=getEventPos(e); startX=pos.x; startY=pos.y; const rect=cropRect.getBoundingClientRect(); origX=rect.left; origY=rect.top; origWidth=cropRect.offsetWidth; origHeight=cropRect.offsetHeight; window.addEventListener('mousemove',onResize); window.addEventListener('touchmove',onResize,{passive:false}); window.addEventListener('mouseup',stopResize); window.addEventListener('touchend',stopResize);}
 function onResize(e){if(!resize) return; e.preventDefault(); const pos=getEventPos(e); let dx=pos.x-startX,dy=pos.y-startY; const containerRect=container.getBoundingClientRect(); const imgRect=img.getBoundingClientRect(); let newLeft=parseInt(cropRect.style.left), newTop=parseInt(cropRect.style.top), newWidth=origWidth, newHeight=origHeight; if(resizeDir.includes('n')){ newTop+=dy; newHeight-=dy; } if(resizeDir.includes('w')){ newLeft+=dx; newWidth-=dx; } if(resizeDir.includes('e')) newWidth+=dx; if(resizeDir.includes('s')) newHeight+=dy; newWidth=Math.max(minWidth,newWidth); newHeight=Math.max(minHeight,newHeight); newLeft=clamp(newLeft,imgRect.left-containerRect.left,imgRect.right-containerRect.left-newWidth); newTop=clamp(newTop,imgRect.top-containerRect.top,imgRect.bottom-containerRect.top-newHeight); cropRect.style.left=newLeft+'px'; cropRect.style.top=newTop+'px'; cropRect.style.width=newWidth+'px'; cropRect.style.height=newHeight+'px'; mustMoveBeforeSave=false;}
-function stopResize(){resize=false; window.removeEventListener('mousemove',onResize); window.removeEventListener('touchmove',onResize); window.removeEventListener('mouseup',stopResize); window.removeEventListener('touchend',stopResize);}
 
 // שמירה
 document.getElementById('save-crop').addEventListener('click', async()=>{
     if(!img.naturalWidth) return alert('התמונה עדיין בטעינה');
     if(mustMoveBeforeSave) return alert('יש להזיז את הריבוע לפני שמירת אות נוספת.');
-    const containerRect=container.getBoundingClientRect();
     const cropRectStyle=cropRect.getBoundingClientRect();
-    const scaleX=img.naturalWidth/img.getBoundingClientRect().width;
-    const scaleY=img.naturalHeight/img.getBoundingClientRect().height;
-    const cropX=(cropRectStyle.left-img.getBoundingClientRect().left)*scaleX;
-    const cropY=(cropRectStyle.top-img.getBoundingClientRect().top)*scaleY;
+    const imgRect=img.getBoundingClientRect();
+
+    // scale נכון לפי naturalWidth/naturalHeight
+    const scaleX = img.naturalWidth / imgRect.width;
+    const scaleY = img.naturalHeight / imgRect.height;
+
+    const cropX=(cropRectStyle.left-imgRect.left)*scaleX;
+    const cropY=(cropRectStyle.top-imgRect.top)*scaleY;
     const cropW=cropRectStyle.width*scaleX;
     const cropH=cropRectStyle.height*scaleY;
+
     const cropPosStr=`${Math.round(cropX)},${Math.round(cropY)},${Math.round(cropW)},${Math.round(cropH)}`;
     if(lastCropPosition===cropPosStr) return alert('לא ניתן לחתוך שוב באותו מיקום. יש להזיז את הריבוע.');
     lastCropPosition=cropPosStr;
+
     const cropCanvas=document.createElement('canvas'); cropCanvas.width=cropW; cropCanvas.height=cropH;
-    const cropCtx=cropCanvas.getContext('2d'); cropCtx.drawImage(img,cropX,cropY,cropW,cropH,0,0,cropW,cropH);
+    const cropCtx=cropCanvas.getContext('2d');
+    cropCtx.drawImage(img,cropX,cropY,cropW,cropH,0,0,cropW,cropH);
 
     // שחור לבן
     const imgData=cropCtx.getImageData(0,0,cropCanvas.width,cropCanvas.height);
