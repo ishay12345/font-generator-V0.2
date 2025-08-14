@@ -44,6 +44,7 @@ def generate_ttf(svg_folder, output_ttf):
 
     used_letters = set()
     count = 0
+    logs = []
 
     for filename in sorted(os.listdir(svg_folder)):
         if not filename.lower().endswith(".svg"):
@@ -56,74 +57,89 @@ def generate_ttf(svg_folder, output_ttf):
                 name = filename.replace(".svg", "")
 
             if name not in letter_map:
-                print(f"🔸 אות לא במפה: {name}")
+                msg = f"🔸 אות לא במפה: {name}"
+                print(msg)
+                logs.append(msg)
                 continue
 
             unicode_val = letter_map[name]
             svg_path = os.path.join(svg_folder, filename)
-
             doc = minidom.parse(svg_path)
             paths = doc.getElementsByTagName('path')
+
             if not paths:
+                msg = f"⚠️ אין path בקובץ: {filename}"
+                print(msg)
+                logs.append(msg)
                 doc.unlink()
-                print(f"⚠️ אין path בקובץ: {filename}")
                 continue
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-            glyph.width = 600  # רוחב אחיד, אפשר לשנות לפי צורך
-
+            glyph.width = 600
             glyph.leftMargin = 40
             glyph.rightMargin = 40
-
-            # הזזה אנכית מתאימה לפי אות
             vertical_shift = vertical_offsets.get(name, 0)
 
             pen = glyph.getPen()
             transform = Identity.translate(0, vertical_shift)
-
             tp = TransformPen(pen, transform)
 
-            successful = False
+            successful_paths = 0
             for path_element in paths:
                 d = path_element.getAttribute('d')
                 if not d.strip():
                     continue
                 try:
                     parse_path(d, tp)
-                    successful = True
+                    successful_paths += 1
                 except Exception as e:
-                    print(f"⚠️ שגיאה בנתיב ב-{filename}: {e}")
+                    msg = f"⚠️ שגיאה בנתיב בקובץ {filename}: {e}"
+                    print(msg)
+                    logs.append(msg)
 
             doc.unlink()
 
-            if not successful:
-                print(f"❌ לא ניתן לנתח path עבור {filename}")
+            if successful_paths == 0:
+                msg = f"❌ לא ניתן לנתח אף path עבור {filename}"
+                print(msg)
+                logs.append(msg)
                 continue
 
-            print(f"✅ {name} נוסף בהצלחה")
+            msg = f"✅ {name} נוסף בהצלחה ({successful_paths} path/paths)"
+            print(msg)
+            logs.append(msg)
             used_letters.add(name)
             count += 1
 
         except Exception as e:
-            print(f"❌ שגיאה בעיבוד {filename}: {e}")
+            msg = f"❌ שגיאה בעיבוד {filename}: {e}"
+            print(msg)
+            logs.append(msg)
 
     missing_letters = sorted(set(letter_map.keys()) - used_letters)
     if missing_letters:
         print("\n🔻 אותיות שלא נכנסו:")
         for letter in missing_letters:
             print(f" - {letter}")
+            logs.append(f"❌ לא נכנסה לפונט: {letter}")
 
     if count == 0:
-        print("❌ לא נוצרו גליפים כלל.")
-        return False
+        msg = "❌ לא נוצרו גליפים כלל."
+        print(msg)
+        logs.append(msg)
+        return False, logs
 
     try:
         os.makedirs(os.path.dirname(output_ttf), exist_ok=True)
         ttf = compileTTF(font)
         ttf.save(output_ttf)
-        print(f"\n🎉 הפונט נוצר בהצלחה בנתיב: {output_ttf}")
-        return True
+        msg = f"\n🎉 הפונט נוצר בהצלחה בנתיב: {output_ttf}"
+        print(msg)
+        logs.append(msg)
+        return True, logs
     except Exception as e:
-        print(f"❌ שגיאה בשמירת הפונט: {e}")
-        return False
+        msg = f"❌ שגיאה בשמירת הפונט: {e}"
+        print(msg)
+        logs.append(msg)
+        return False, logs
