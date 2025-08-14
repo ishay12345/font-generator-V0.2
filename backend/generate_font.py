@@ -7,7 +7,6 @@ from fontTools.misc.transform import Identity
 from xml.dom import minidom
 
 # ===== מיפוי אותיות =====
-# כל האותיות הרגילות קודם, ואז הסופיות בסוף לפי הסדר: ך, ם, ן, ף, ץ
 letter_map = {
     "alef": 0x05D0,
     "bet": 0x05D1,
@@ -66,6 +65,7 @@ def generate_ttf(svg_folder, output_ttf):
     count = 0
     logs = []
 
+    # ===== טעינת כל האותיות הרגילות כולל סופיות אם קיימות ב־svg_folder =====
     for filename in sorted(os.listdir(svg_folder)):
         if not filename.lower().endswith(".svg"):
             continue
@@ -100,7 +100,6 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.leftMargin = 40
             glyph.rightMargin = 40
 
-            # הזזת ה־Y: מותאם אישית + גלובלי
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
             pen = glyph.getPen()
             transform = Identity.translate(0, vertical_shift)
@@ -138,13 +137,54 @@ def generate_ttf(svg_folder, output_ttf):
             print(msg)
             logs.append(msg)
 
-    missing_letters = sorted(set(letter_map.keys()) - used_letters)
-    if missing_letters:
-        print("\n🔻 אותיות שלא נכנסו:")
-        for letter in missing_letters:
-            print(f" - {letter}")
-            logs.append(f"❌ לא נכנסה לפונט: {letter}")
+    # ===== טעינת האותיות הסופיות ידנית מהמיקום הקבוע =====
+    final_svgs = {
+        "final_kaf": "app/backend/static/svg_letters/final_kaf.svg",
+        "final_mem": "app/backend/static/svg_letters/final_mem.svg",
+        "final_nun": "app/backend/static/svg_letters/final_nun.svg",
+        "final_pe": "app/backend/static/svg_letters/final_pe.svg",
+        "final_tsadi": "app/backend/static/svg_letters/final_tsadi.svg"
+    }
 
+    for name, path in final_svgs.items():
+        if not os.path.exists(path):
+            msg = f"⚠️ קובץ סופי לא נמצא: {path}"
+            print(msg)
+            logs.append(msg)
+            continue
+
+        try:
+            unicode_val = letter_map[name]
+            doc = minidom.parse(path)
+            paths = doc.getElementsByTagName('path')
+            glyph = font.newGlyph(name)
+            glyph.unicode = unicode_val
+            glyph.width = 600
+            glyph.leftMargin = 40
+            glyph.rightMargin = 40
+            vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
+            pen = glyph.getPen()
+            transform = Identity.translate(0, vertical_shift)
+            tp = TransformPen(pen, transform)
+
+            for path_element in paths:
+                d = path_element.getAttribute('d')
+                if not d.strip():
+                    continue
+                parse_path(d, tp)
+
+            doc.unlink()
+            msg = f"✅ אות סופית {name} נטענה בהצלחה"
+            print(msg)
+            logs.append(msg)
+            used_letters.add(name)
+
+        except Exception as e:
+            msg = f"❌ שגיאה בטעינת האות הסופית {name}: {e}"
+            print(msg)
+            logs.append(msg)
+
+    # ===== סיום ושמירת הפונט =====
     if count == 0:
         msg = "❌ לא נוצרו גליפים כלל."
         print(msg)
