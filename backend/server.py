@@ -123,12 +123,14 @@ def save_crop():
         out_path = os.path.join(GLYPHS_DIR, f"{eng_name}.png")
         try:
             normalize_and_center_glyph(tmp_path, out_path, target_size=600, margin=50, vertical_offset=vertical)
-        except Exception:
+            logs.append(f"✅ האות '{eng_name}' נוספה לפונט בהצלחה")
+        except Exception as e:
             shutil.copy(tmp_path, out_path)
+            logs.append(f"❌ בעיה בעיבוד האות '{eng_name}', נשמרה כ-PNG בלבד: {str(e)}")
 
-        logs.append(f"✅ האות '{eng_name}' (אינדקס {index}) נשמרה בהצלחה בשם {eng_name}.png")
         print(logs[-1])
 
+        # המרת BW
         bw_out = os.path.join(BW_DIR, f"{eng_name}.png")
         result_bw = subprocess.run(
             ["python", os.path.join(BASE_DIR, "bw_converter.py"), out_path, bw_out],
@@ -136,11 +138,11 @@ def save_crop():
         )
         if result_bw.returncode == 0:
             logs.append(f"✅ המרת BW הצליחה עבור {eng_name}")
-            print(logs[-1])
         else:
             logs.append(f"❌ שגיאה בהמרת BW עבור {eng_name}: {result_bw.stderr}")
-            print(logs[-1])
+        print(logs[-1])
 
+        # המרת SVG
         svg_out = os.path.join(SVG_DIR, f"{eng_name}.svg")
         result_svg = subprocess.run(
             ["python", os.path.join(BASE_DIR, "svg_converter.py"), bw_out, svg_out],
@@ -148,14 +150,15 @@ def save_crop():
         )
         if result_svg.returncode == 0:
             logs.append(f"✅ המרת SVG הצליחה עבור {eng_name}")
-            print(logs[-1])
         else:
             logs.append(f"❌ שגיאה בהמרת SVG עבור {eng_name}: {result_svg.stderr}")
-            print(logs[-1])
+        print(logs[-1])
 
-        # אם זו האות האחרונה, מחזיר JSON עם סטטוס מוכן לפונט
+        # אם זו האות האחרונה
         if eng_name == "final_tsadi":
             logs.append("🎉 כל האותיות הושלמו! הפונט מוכן להורדה")
+            print("כל האותיות:", LETTERS_ORDER)
+            print("סטטוס האותיות בפונט:", logs)
             return jsonify({"font_ready": os.path.exists(OUTPUT_TTF), "logs": logs})
 
         return jsonify({"saved": f"{eng_name}.png", "logs": logs})
@@ -174,12 +177,14 @@ def font_status():
 @app.route('/download_font')
 def download_font():
     if os.path.exists(OUTPUT_TTF):
+        print("Font found at:", OUTPUT_TTF)
         return send_file(
             OUTPUT_TTF,
             as_attachment=True,
             download_name="gHebrewHandwriting.ttf",
             mimetype="font/ttf"
         )
+    print("Font not found!")
     return "הפונט עדיין לא נוצר", 404
 
 if __name__ == '__main__':
