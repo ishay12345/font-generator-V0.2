@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>חיתוך תמונה עם Canvas - חיתוך סדרתי</title>
+<title>חיתוך סדרתי של אותיות</title>
 <style>
   html, body {
     margin: 0; padding: 0;
@@ -112,6 +112,8 @@
     transition: width 0.1s;
   }
 </style>
+<!-- html2canvas -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -258,71 +260,88 @@ function onResize(e){
   cropRect.style.height=newHeight+'px';
   mustMoveBeforeSave=false;
 }
-function stopResize(){ resize=false; window.removeEventListener('mousemove',onResize); window.removeEventListener('touchmove',onResize); window.removeEventListener('mouseup',stopResize); window.removeEventListener('touchend',stopResize); }
-
-// עיבוד לשחור-לבן
-function toGrayscale(canvas){
-  const ctx=canvas.getContext('2d');
-  const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
-  const data=imgData.data;
-  for(let i=0;i<data.length;i+=4){
-    const avg=(data[i]+data[i+1]+data[i+2])/3;
-    data[i]=data[i+1]=data[i+2]=avg;
-  }
-  ctx.putImageData(imgData,0,0);
-  return canvas;
+function stopResize(){ resize=false; window.removeEventListener('
+mousemove',onResize); 
+  window.removeEventListener('touchmove',onResize); 
+  window.removeEventListener('mouseup',stopResize); 
+  window.removeEventListener('touchend',stopResize); 
 }
 
-// שמירת חיתוך
-document.getElementById('save-crop').addEventListener('click',()=> {
+// שמירת חיתוך עם html2canvas כדי ללכוד את התמונה כפי שהיא מוצגת
+document.getElementById('save-crop').addEventListener('click', async () => {
   if(!img.naturalWidth) return alert('התמונה עדיין בטעינה');
   if(mustMoveBeforeSave) return alert('יש להזיז את הריבוע לפני שמירת אות נוספת.');
 
-  const cropStyle=window.getComputedStyle(cropRect);
-  const cropX=parseInt(cropStyle.left), cropY=parseInt(cropStyle.top);
-  const cropW=parseInt(cropStyle.width), cropH=parseInt(cropStyle.height);
+  const cropStyle = window.getComputedStyle(cropRect);
+  const cropX = parseInt(cropStyle.left);
+  const cropY = parseInt(cropStyle.top);
+  const cropW = parseInt(cropStyle.width);
+  const cropH = parseInt(cropStyle.height);
 
-  const cropPosStr=`${cropX},${cropY},${cropW},${cropH}`;
-  if(lastCropPosition===cropPosStr) return alert('לא ניתן לחתוך שוב באותו מיקום. יש להזיז את הריבוע.');
-  lastCropPosition=cropPosStr;
+  const cropPosStr = `${cropX},${cropY},${cropW},${cropH}`;
+  if(lastCropPosition === cropPosStr) return alert('לא ניתן לחתוך שוב באותו מיקום. יש להזיז את הריבוע.');
+  lastCropPosition = cropPosStr;
 
-  const scaleX=img.naturalWidth/img.width, scaleY=img.naturalHeight/img.height;
-  const realX=Math.round(cropX*scaleX), realY=Math.round(cropY*scaleY);
-  const realW=Math.round(cropW*scaleX), realH=Math.round(cropH*scaleY);
-  const canvas=document.createElement('canvas');
-  canvas.width=realW; canvas.height=realH;
-  const ctx=canvas.getContext('2d');
-  ctx.drawImage(img, realX, realY, realW, realH, 0, 0, realW, realH);
+  progressContainer.style.display = 'block';
+  progressBar.style.width = '0%';
 
-  progressContainer.style.display='block';
-  progressBar.style.width='0%';
-  let progress=0;
-  const interval=setInterval(()=>{ progress+=20; progressBar.style.width=progress+'%'; if(progress>=100) clearInterval(interval); }, 80);
+  try {
+    // לכידת התמונה עם html2canvas
+    const canvasFull = await html2canvas(img, {backgroundColor: null, scale:1});
+    const ctx = canvasFull.getContext('2d');
 
-  toGrayscale(canvas);
+    // חיתוך אזור הריבוע
+    const scaleX = canvasFull.width / img.width;
+    const scaleY = canvasFull.height / img.height;
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = cropW * scaleX;
+    cropCanvas.height = cropH * scaleY;
+    const cropCtx = cropCanvas.getContext('2d');
+    cropCtx.drawImage(canvasFull, cropX * scaleX, cropY * scaleY, cropW * scaleX, cropH * scaleY, 0, 0, cropCanvas.width, cropCanvas.height);
 
-  fetch('/backend/save_crop',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({name:letters[currentIndex], index:currentIndex, data:canvas.toDataURL('image/png')})
-  }).then(res=>res.json())
-  .then(json=>{
-    progressContainer.style.display='none';
+    // שחור לבן
+    const imgData = cropCtx.getImageData(0,0,cropCanvas.width,cropCanvas.height);
+    const data = imgData.data;
+    for(let i=0;i<data.length;i+=4){
+      const avg = (data[i]+data[i+1]+data[i+2])/3;
+      data[i]=data[i+1]=data[i+2]=avg;
+    }
+    cropCtx.putImageData(imgData,0,0);
+
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 20;
+      progressBar.style.width = progress + '%';
+      if(progress >= 100) clearInterval(interval);
+    }, 80);
+
+    // שליחה לשרת
+    const res = await fetch('/backend/save_crop',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name: letters[currentIndex], index: currentIndex, data: cropCanvas.toDataURL('image/png')})
+    });
+    const json = await res.json();
+    progressContainer.style.display = 'none';
+
     if(json.error) return alert('שגיאה בשמירה: '+json.error);
     history.push(currentIndex);
     lettersBar.children[currentIndex].classList.add('done');
-    mustMoveBeforeSave=true;
+    mustMoveBeforeSave = true;
 
     currentIndex++;
     if(currentIndex >= letters.length){
         updateLettersBar();
         statusEl.textContent='🎉 כל האותיות נשמרו! לחץ על "צור פונט" כדי להפיק את הפונט.';
-        generateBtn.style.display='inline-block'; // הפוך את כפתור יצירת הפונט לזמין
+        generateBtn.style.display='inline-block';
     } else {
         updateLettersBar();
         statusEl.textContent=`✅ האות "${letters[currentIndex-1]}" נשמרה! חתוך את "${letters[currentIndex]}"`;
     }
-  }).catch(err=>alert('שגיאה בשליחה: '+err));
+  } catch(err){
+    progressContainer.style.display = 'none';
+    alert('שגיאה בחיתוך: ' + err);
+  }
 });
 
 // Undo חיתוך
@@ -349,6 +368,5 @@ generateBtn.addEventListener("click", async () => {
     }
 });
 </script>
-
 </body>
 </html>
