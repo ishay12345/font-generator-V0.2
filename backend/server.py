@@ -120,6 +120,8 @@ def save_crop():
         # המרת BW ל-SVG בתיקייה אחידה
         bw_out = os.path.join(BW_DIR, f"{eng_name}.png")
         shutil.copy(out_path, bw_out)
+        logs.append(f"✅ שמירה/המרת BW הצליחה עבור {eng_name}")
+         print(logs[-1])
 
         svg_out = os.path.join(SVG_DIR, f"{eng_name}.svg")
         try:
