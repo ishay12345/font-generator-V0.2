@@ -31,11 +31,11 @@ letter_map = {
     "shin": 0x05E9,
     "tav": 0x05EA,
     # אותיות סופיות
-    "finalkaf": 0x05DA,   # ך
-    "finalmem": 0x05DD,   # ם
-    "finalnun": 0x05DF,   # ן
-    "finalpe": 0x05E3,    # ף
-    "finaltsadi": 0x05E5  # ץ
+    "finalkaf": 0x05DA,
+    "finalmem": 0x05DD,
+    "finalnun": 0x05DF,
+    "finalpe": 0x05E3,
+    "finaltsadi": 0x05E5
 }
 
 # ===== הזזות אנכיות מותאמות =====
@@ -45,16 +45,29 @@ vertical_offsets = {
 }
 
 # ===== הזזה גלובלית ל־Y =====
-GLOBAL_Y_SHIFT = -400  # ניתן לשנות
-PADDING_GENERAL = 35    # פדינג כללי
-PADDING_LARGE = 150      # פדינג אנכי מוגדל לאותיות ך ף ץ
+GLOBAL_Y_SHIFT = -400
+PADDING_GENERAL = 35
+PADDING_LARGE = 150  # מוגדל ל- ך ף ץ
 
-# ===== מיפוי רווח אופקי מותאם עבור אותיות צמודות =====
+# ===== התאמות אופקיות בין אותיות צמודות =====
 HORIZONTAL_ADJUST = {
     ("yod", "kaf"): 80,
     ("shin", "tav"): 60,
     ("kaf", "lamed"): 30
 }
+
+def center_glyph_x(glyph):
+    """מרכוז גליף ב-X לפי גבולותיו"""
+    bounds = glyph.bounds
+    if not bounds:
+        return
+    min_x, _, max_x, _ = bounds
+    shift_x = (600 - (max_x - min_x)) / 2 - min_x
+    pen = glyph.getPointPen()
+    transform = Identity.translate(shift_x, 0)
+    tp = TransformPen(glyph.getPen(), transform)
+    for contour in glyph:
+        contour.draw(tp)
 
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
@@ -70,7 +83,7 @@ def generate_ttf(svg_folder, output_ttf):
     count = 0
     logs = []
 
-    # ===== טעינת כל האותיות הרגילות כולל סופיות אם קיימות ב־svg_folder =====
+    # ===== טעינת אותיות =====
     for filename in sorted(os.listdir(svg_folder)):
         if not filename.lower().endswith(".svg"):
             continue
@@ -105,11 +118,18 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.leftMargin = 40
             glyph.rightMargin = 40
 
-            # בחירת פדינג: רגיל או מוגדל לאותיות סופיות מסוימות
-            padding = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
+            # פדינג אופקי
+            if name == "alef":
+                padding_x = 5
+            else:
+                padding_x = PADDING_GENERAL
+
+            # פדינג אנכי
+            padding_y = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
+
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
             pen = glyph.getPen()
-            transform = Identity.translate(padding, vertical_shift - padding)
+            transform = Identity.translate(padding_x, vertical_shift - padding_y)
             tp = TransformPen(pen, transform)
 
             successful_paths = 0
@@ -133,6 +153,10 @@ def generate_ttf(svg_folder, output_ttf):
                 logs.append(msg)
                 continue
 
+            # מרכוז א אם צריך
+            if name == "alef":
+                center_glyph_x(glyph)
+
             msg = f"✅ {name} נוסף בהצלחה ({successful_paths} path/paths)"
             print(msg)
             logs.append(msg)
@@ -144,7 +168,7 @@ def generate_ttf(svg_folder, output_ttf):
             print(msg)
             logs.append(msg)
 
-    # ===== טעינת האותיות הסופיות ידנית מהמיקום הקבוע =====
+    # ===== טעינת האותיות הסופיות ידנית =====
     final_svgs = {
         "finalkaf": "app/backend/static/svg_letters/finalkaf.svg",
         "finalmem": "app/backend/static/svg_letters/finalmem.svg",
@@ -170,10 +194,12 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.leftMargin = 40
             glyph.rightMargin = 40
 
-            padding = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
+            padding_x = PADDING_GENERAL
+            padding_y = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
+
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
             pen = glyph.getPen()
-            transform = Identity.translate(padding, vertical_shift - padding)
+            transform = Identity.translate(padding_x, vertical_shift - padding_y)
             tp = TransformPen(pen, transform)
 
             for path_element in paths:
