@@ -30,7 +30,6 @@ letter_map = {
     "resh": 0x05E8,
     "shin": 0x05E9,
     "tav": 0x05EA,
-    # אותיות סופיות
     "finalkaf": 0x05DA,
     "finalmem": 0x05DD,
     "finalnun": 0x05DF,
@@ -44,10 +43,10 @@ vertical_offsets = {
     "qof": -250,
 }
 
-# ===== הזזה גלובלית ל־Y =====
+# ===== הגדרות פדינג =====
 GLOBAL_Y_SHIFT = -400
 PADDING_GENERAL = 35
-PADDING_LARGE = 150  # מוגדל ל- ך ף ץ
+PADDING_LARGE = 150  # מוגדל לאותיות סופיות ך ף ץ
 
 # ===== התאמות אופקיות בין אותיות צמודות =====
 HORIZONTAL_ADJUST = {
@@ -57,15 +56,16 @@ HORIZONTAL_ADJUST = {
 }
 
 def center_glyph_x(glyph):
-    """מרכוז גליף ב-X לפי גבולותיו"""
+    """מרכוז גליף ב-X לפי גבולותיו אחרי שה־paths נטענו"""
     bounds = glyph.bounds
     if not bounds:
         return
     min_x, _, max_x, _ = bounds
     shift_x = (600 - (max_x - min_x)) / 2 - min_x
-    pen = glyph.getPointPen()
+    pen = glyph.getPen()
     transform = Identity.translate(shift_x, 0)
-    tp = TransformPen(glyph.getPen(), transform)
+    tp = TransformPen(pen, transform)
+
     for contour in glyph:
         contour.draw(tp)
 
@@ -83,17 +83,13 @@ def generate_ttf(svg_folder, output_ttf):
     count = 0
     logs = []
 
-    # ===== טעינת אותיות =====
+    # ===== טעינת אותיות רגילות =====
     for filename in sorted(os.listdir(svg_folder)):
         if not filename.lower().endswith(".svg"):
             continue
 
         try:
-            if "_" in filename:
-                name = filename.split("_", 1)[1].replace(".svg", "")
-            else:
-                name = filename.replace(".svg", "")
-
+            name = filename.split("_", 1)[1].replace(".svg", "") if "_" in filename else filename.replace(".svg", "")
             if name not in letter_map:
                 msg = f"🔸 אות לא במפה: {name}"
                 print(msg)
@@ -118,18 +114,12 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.leftMargin = 40
             glyph.rightMargin = 40
 
-            # פדינג אופקי
-            if name == "alef":
-                padding_x = 5
-            else:
-                padding_x = PADDING_GENERAL
-
-            # פדינג אנכי
+            # פדינג
+            padding_x = 5 if name == "alef" else PADDING_GENERAL
             padding_y = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
-
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
             pen = glyph.getPen()
-            transform = Identity.translate(padding_x, vertical_shift - padding_y)
+            transform = Identity.translate(padding_x, vertical_shift + padding_y)
             tp = TransformPen(pen, transform)
 
             successful_paths = 0
@@ -153,7 +143,7 @@ def generate_ttf(svg_folder, output_ttf):
                 logs.append(msg)
                 continue
 
-            # מרכוז א אם צריך
+            # מרכוז האות א
             if name == "alef":
                 center_glyph_x(glyph)
 
@@ -168,7 +158,7 @@ def generate_ttf(svg_folder, output_ttf):
             print(msg)
             logs.append(msg)
 
-    # ===== טעינת האותיות הסופיות ידנית =====
+    # ===== טעינת האותיות הסופיות =====
     final_svgs = {
         "finalkaf": "app/backend/static/svg_letters/finalkaf.svg",
         "finalmem": "app/backend/static/svg_letters/finalmem.svg",
@@ -196,10 +186,9 @@ def generate_ttf(svg_folder, output_ttf):
 
             padding_x = PADDING_GENERAL
             padding_y = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
-
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
             pen = glyph.getPen()
-            transform = Identity.translate(padding_x, vertical_shift - padding_y)
+            transform = Identity.translate(padding_x, vertical_shift + padding_y)
             tp = TransformPen(pen, transform)
 
             for path_element in paths:
@@ -219,7 +208,7 @@ def generate_ttf(svg_folder, output_ttf):
             print(msg)
             logs.append(msg)
 
-    # ===== סיום ושמירת הפונט =====
+    # ===== שמירת הפונט =====
     if count == 0:
         msg = "❌ לא נוצרו גליפים כלל."
         print(msg)
