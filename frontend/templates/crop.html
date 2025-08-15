@@ -5,404 +5,517 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>חיתוך סדרתי של אותיות</title>
 <style>
-    /* רקע מעוצב */
-    html, body {
-        margin: 0;
-        padding: 0;
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background: linear-gradient(135deg, #fdfbfb, #ebedee);
-        color: #222;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
+  /* בסיס דף */
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    overflow-x: hidden;
+  }
+  body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    direction: rtl;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    min-height: 100vh;
+    box-sizing: border-box;
+    background: transparent;
+    position: relative;
+    padding: 20px;
+    color: #fff;
+  }
 
-    h1 {
-        margin: 20px;
-        color: #2c3e50;
-    }
+  /* רקע Finisher Header כמו בדף הראשון */
+  .finisher-header {
+    position: fixed; top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    z-index: -2; overflow: hidden;
+  }
+  /* טאצ' עדין: שכבת זוהר רכה מעל הרקע */
+  .bg-glow {
+    position: fixed; inset: 0;
+    background: radial-gradient(60% 40% at 50% 20%, rgba(255,255,255,0.08), transparent 60%),
+                radial-gradient(50% 35% at 20% 80%, rgba(255,255,255,0.06), transparent 60%);
+    z-index: -1; pointer-events: none;
+  }
 
-    #letters-bar {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        max-width: 90vw;
-        margin: 10px 0;
-        gap: 5px;
-    }
+  /* בלוק פתיח ודגשים */
+  .main-wrap {
+    margin-top: 20px;
+    display: flex; flex-direction: column; align-items: center;
+    width: 100%; max-width: 1100px;
+  }
+  h1 {
+    margin: 0 0 6px 0;
+    font-size: 2rem;
+    text-shadow: 0 0 10px rgba(0,0,0,0.3);
+  }
+  .tips {
+    margin: 6px 0 16px 0;
+    background: rgba(255,255,255,0.08);
+    padding: 16px 20px;
+    border-radius: 16px;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    max-width: 900px;
+    width: 100%;
+  }
+  .tips p {
+    margin: 0 0 8px 0;
+    font-weight: 600;
+  }
+  .tips ul {
+    margin: 0; padding-right: 18px;
+  }
+  .instruction {
+    margin: 8px 0 12px 0;
+    font-size: 1.1rem;
+    text-shadow: 0 0 10px rgba(0,0,0,0.25);
+  }
 
-    .letter {
-        padding: 6px 10px;
-        border: 2px solid #ccc;
-        border-radius: 5px;
-        cursor: pointer;
-        user-select: none;
-        background-color: #f7f7f7;
-        transition: 0.3s;
-    }
-    .letter:hover {
-        transform: scale(1.1);
-        background: #ecf6fb;
-    }
-    .letter.done {
-        background-color: #2ecc71;
-        color: white;
-        border-color: #27ae60;
-    }
-    .letter.active {
-        border-color: #3498db;
-        background-color: #ecf6fb;
-    }
+  /* שורת האותיות */
+  #letters-bar {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    max-width: 90vw; margin: 10px 0; gap: 6px;
+  }
+  .letter {
+    padding: 6px 10px;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-radius: 10px;
+    cursor: default; user-select: none;
+    background: rgba(255,255,255,0.08);
+    transition: transform .15s ease, box-shadow .15s ease, background .2s ease, border-color .2s ease;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+  }
+  .letter.active {
+    border-color: #6bd6ff;
+    background: rgba(107,214,255,0.15);
+    box-shadow: 0 4px 16px rgba(107,214,255,0.25);
+    transform: translateY(-1px);
+  }
+  .letter.done {
+    background: #27ae60;
+    border-color: #2ecc71;
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(46,204,113,0.35);
+  }
 
-    #image-container {
-        position: relative;
-        max-width: 90vw;
-        max-height: 70vh;
-        border: 2px solid #ccc;
-        background: white;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        user-select: none;
-        touch-action: none;
-        border-radius: 10px;
-        overflow: hidden;
-    }
+  /* אזור התמונה והחיתוך */
+  #image-container {
+    position: relative;
+    max-width: 90vw; max-height: 70vh;
+    border: 2px dashed rgba(255,255,255,0.25);
+    display: flex; justify-content: center; align-items: center;
+    user-select: none; touch-action: none;
+    border-radius: 16px; overflow: hidden;
+    background: rgba(0,0,0,0.15);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+  #source-image {
+    display: block;
+    max-width: 100%; max-height: 70vh; object-fit: contain;
+  }
+  #crop-rectangle {
+    position: absolute;
+    border: 3px dashed #ffcb57;
+    background: rgba(255,203,87,0.15);
+    top: 40px; left: 40px; width: 180px; height: 180px;
+    box-sizing: border-box; cursor: move; border-radius: 10px;
+    box-shadow: 0 0 12px rgba(255,203,87,0.6);
+    transition: box-shadow .15s ease;
+  }
+  #crop-rectangle:hover {
+    box-shadow: 0 0 16px rgba(255,203,87,0.75);
+  }
+  .resize-handle {
+    position: absolute; width: 14px; height: 14px;
+    background: #ffcb57; border-radius: 50%;
+    box-shadow: 0 0 6px rgba(255,203,87,0.9);
+  }
+  .resize-handle.nw { top: -7px; left: -7px; cursor: nwse-resize; }
+  .resize-handle.ne { top: -7px; right: -7px; cursor: nesw-resize; }
+  .resize-handle.sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
+  .resize-handle.se { bottom: -7px; right: -7px; cursor: nwse-resize; }
 
-    #source-image {
-        display: block;
-        max-width: 100%;
-        max-height: 70vh;
-        object-fit: contain;
-    }
+  /* כפתורים */
+  #controls {
+    margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+  }
+  .btn {
+    display: inline-block;
+    padding: 12px 22px;
+    border: none; border-radius: 30px;
+    color: #fff; font-size: 1rem; cursor: pointer; text-decoration: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+    transition: transform .15s ease, box-shadow .15s ease, background .25s ease;
+    background: linear-gradient(45deg, #6bd6ff, #9138e5);
+  }
+  .btn:hover { transform: translateY(-2px); background: linear-gradient(45deg, #ffcb57, #ff333d); }
+  .btn:disabled { background: #555 !important; cursor: not-allowed; }
 
-    #crop-rectangle {
-        position: absolute;
-        border: 3px dashed #e74c3c;
-        background: rgba(231, 76, 60, 0.15);
-        top: 40px;
-        left: 40px;
-        width: 180px;
-        height: 180px;
-        box-sizing: border-box;
-        cursor: move;
-        border-radius: 8px;
-        box-shadow: 0 0 12px rgba(231, 76, 60, 0.7);
-    }
+  #status {
+    margin-top: 12px; font-weight: 700; min-height: 1.2em;
+    text-shadow: 0 0 10px rgba(0,0,0,0.25);
+  }
 
-    .resize-handle {
-        position: absolute;
-        width: 14px;
-        height: 14px;
-        background: #e74c3c;
-        border-radius: 50%;
-        box-shadow: 0 0 4px rgba(231, 76, 60, 0.9);
-    }
+  /* Progress */
+  #progress-container {
+    margin-top: 10px; width: 240px; height: 20px;
+    border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 8px; overflow: hidden; display: none;
+    background: rgba(255,255,255,0.1);
+    box-shadow: inset 0 1px 6px rgba(0,0,0,0.25);
+  }
+  #progress-bar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #6bd6ff, #9138e5);
+    transition: width 0.1s;
+  }
 
-    .resize-handle.nw { top: -7px; left: -7px; cursor: nwse-resize; }
-    .resize-handle.ne { top: -7px; right: -7px; cursor: nesw-resize; }
-    .resize-handle.sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
-    .resize-handle.se { bottom: -7px; right: -7px; cursor: nwse-resize; }
-
-    #controls {
-        margin-top: 15px;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-
-    button, a.button-link {
-        padding: 10px 18px;
-        background-color: #3498db;
-        border: none;
-        color: white;
-        border-radius: 5px;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: background-color 0.25s ease, transform 0.2s;
-        text-decoration: none;
-    }
-
-    button:hover, a.button-link:hover {
-        background-color: #2980b9;
-        transform: scale(1.05);
-    }
-
-    #status {
-        margin-top: 10px;
-        font-weight: bold;
-        color: green;
-        min-height: 1.2em;
-    }
-
-    #progress-container {
-        margin-top: 10px;
-        width: 200px;
-        height: 20px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        overflow: hidden;
-        display: none;
-    }
-
-    #progress-bar {
-        height: 100%;
-        width: 0%;
-        background-color: #3498db;
-        transition: width 0.1s;
-    }
+  /* רספונסיביות */
+  @media (max-width: 600px) {
+    h1 { font-size: 1.5rem; }
+    .btn { font-size: 0.95rem; padding: 10px 18px; }
+    #image-container { max-height: 65vh; }
+    #source-image { max-height: 65vh; }
+  }
 </style>
 </head>
 <body>
-<h1>חיתוך סדרתי של אותיות</h1>
-<div id="letters-bar"></div>
 
-<div id="image-container">
-    <img id="source-image" src="{{ url_for('static', filename='uploads/' + filename) }}" alt="תמונה לחיתוך" />
-    <div id="crop-rectangle">
+  <!-- רקע Finisher -->
+  <div class="finisher-header"></div>
+  <div class="bg-glow"></div>
+
+  <div class="main-wrap">
+    <h1>🚀 עוד שלב אחד וסיימתם!</h1>
+
+    <div class="tips">
+      <p>כמה דגשים לפני שאתם חותכים את התמונות:</p>
+      <ul>
+        <li>כוונו את הריבוע קרוב לגבולות האות – עדיף דיוק מאשר שוליים מיותרים.</li>
+        <li>אפשר לגרור ולשנות גודל גם בעכבר וגם בטאצ'.</li>
+        <li>אם יצא פחות ממושלם – תמיד אפשר לבטל חיתוך אחרון ולנסות שוב.</li>
+      </ul>
+    </div>
+
+    <div class="instruction" id="instruction">🎯 גררו את הריבוע ומקמו אותו על האות <b>א</b>, ואז לחצו “חתוך”.</div>
+
+    <div id="letters-bar"></div>
+
+    <div id="image-container">
+      <img id="source-image" src="{{ url_for('static', filename='uploads/' + filename) }}" alt="תמונה לחיתוך" />
+      <div id="crop-rectangle">
         <div class="resize-handle nw"></div>
         <div class="resize-handle ne"></div>
         <div class="resize-handle sw"></div>
         <div class="resize-handle se"></div>
+      </div>
     </div>
-</div>
 
-<div id="controls">
-    <button id="save-crop">שמור אות נוכחית</button>
-    <button id="undo-crop">בטל חיתוך אחרון</button>
-    <button id="generateFontBtn" style="display:none;">צור פונט</button>
-    <a id="downloadFontBtn" href="#" download class="button-link" style="display:none;">⬇ הורד את הפונט</a>
-</div>
+    <div id="controls">
+      <button id="save-crop" class="btn">✂ חתוך את האות א</button>
+      <button id="undo-crop" class="btn" style="background: linear-gradient(45deg, #ffcb57, #ff333d);">↩ בטל חיתוך אחרון</button>
+      <button id="generateFontBtn" class="btn" style="display:none;">✨ צור פונט</button>
+      <a id="downloadFontBtn" class="btn" href="#" download style="display:none;">⬇ הורד את הפונט</a>
+    </div>
 
-<div id="status"></div>
-<div id="progress-container"><div id="progress-bar"></div></div>
+    <div id="status"></div>
+    <div id="progress-container"><div id="progress-bar"></div></div>
+  </div>
 
-<script>
-const container = document.getElementById('image-container');
-const img = document.getElementById('source-image');
-const cropRect = document.getElementById('crop-rectangle');
-const statusEl = document.getElementById('status');
-const lettersBar = document.getElementById('letters-bar');
-const progressContainer = document.getElementById('progress-container');
-const progressBar = document.getElementById('progress-bar');
-const generateBtn = document.getElementById("generateFontBtn");
-const downloadBtn = document.getElementById("downloadFontBtn");
-
-const minWidth=30, minHeight=30;
-let drag=false, resize=false, resizeDir='', startX,startY, origX,origY, origWidth,origHeight, lastCropPosition=null, mustMoveBeforeSave=false;
-
-const letters=['א','ב','ג','ד','ה','ו','ז','ח','ט','י','כ','ל','מ','נ','ס','ע','פ','צ','ק','ר','ש','ת','ך','ם','ן','ף','ץ'];
-let currentIndex=0, history=[];
-
-// בניית האותיות
-letters.forEach((ltr,i)=>{
-    const el=document.createElement('div');
-    el.className='letter';
-    if(i===currentIndex) el.classList.add('active');
-    el.textContent=ltr;
-    lettersBar.appendChild(el);
-});
-
-function updateLettersBar(){
-    [...lettersBar.children].forEach((child,i)=>{
-        child.classList.remove('active');
-        if(i===currentIndex) child.classList.add('active');
+  <!-- ספריית הרקע (כמו בדף הראשון) -->
+  <script src="{{ url_for('static', filename='finisher-header.es5.min.js') }}"></script>
+  <script>
+    new FinisherHeader({
+      "count": 6,
+      "size": { "min": 1100, "max": 1300, "pulse": 0 },
+      "speed": { "x": { "min": 0.1, "max": 0.3 }, "y": { "min": 0.1, "max": 0.3 } },
+      "colors": { "background": "#9138e5", "particles": ["#6bd6ff", "#ffcb57", "#ff333d"] },
+      "blending": "overlay",
+      "opacity": { "center": 1, "edge": 0.12 },
+      "skew": -2,
+      "shapes": ["c"]
     });
-}
+  </script>
 
-function clamp(val,min,max){return Math.min(Math.max(val,min),max);}
-function getEventPos(e){return e.touches?{x:e.touches[0].clientX,y:e.touches[0].clientY}:{x:e.clientX,y:e.clientY};}
+  <script>
+    const container = document.getElementById('image-container');
+    const img = document.getElementById('source-image');
+    const cropRect = document.getElementById('crop-rectangle');
 
-// גרירה
-cropRect.addEventListener('mousedown', startDrag);
-cropRect.addEventListener('touchstart', startDrag, {passive:false});
+    const statusEl = document.getElementById('status');
+    const instructionEl = document.getElementById('instruction');
+    const lettersBar = document.getElementById('letters-bar');
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('progress-bar');
 
-function startDrag(e){
-    if(e.target.classList.contains('resize-handle')) return;
-    e.preventDefault();
-    drag=true;
-    const pos=getEventPos(e);
-    startX=pos.x;
-    startY=pos.y;
-    const rect=cropRect.getBoundingClientRect();
-    origX=rect.left;
-    origY=rect.top;
-    window.addEventListener('mousemove',onDrag);
-    window.addEventListener('touchmove',onDrag,{passive:false});
-    window.addEventListener('mouseup',stopDrag);
-    window.addEventListener('touchend',stopDrag);
-}
+    const generateBtn = document.getElementById("generateFontBtn");
+    const downloadBtn = document.getElementById("downloadFontBtn");
+    const saveBtn = document.getElementById("save-crop");
+    const undoBtn = document.getElementById("undo-crop");
 
-function onDrag(e){
-    if(!drag) return;
-    e.preventDefault();
-    const pos=getEventPos(e);
-    const dx=pos.x-startX, dy=pos.y-startY;
-    const containerRect=container.getBoundingClientRect();
-    const imgRect=img.getBoundingClientRect();
-    let newLeft=origX+dx, newTop=origY+dy;
-    newLeft=clamp(newLeft, imgRect.left, imgRect.right-cropRect.offsetWidth);
-    newTop=clamp(newTop, imgRect.top, imgRect.bottom-cropRect.offsetHeight);
-    cropRect.style.left=(newLeft-containerRect.left)+'px';
-    cropRect.style.top=(newTop-containerRect.top)+'px';
-    mustMoveBeforeSave=false;
-}
+    const minWidth=30, minHeight=30;
+    let drag=false, resize=false, resizeDir='', startX,startY, origX,origY, origWidth,origHeight, lastCropPosition=null, mustMoveBeforeSave=false;
 
-function stopDrag(){
-    drag=false;
-    window.removeEventListener('mousemove',onDrag);
-    window.removeEventListener('touchmove',onDrag);
-    window.removeEventListener('mouseup',stopDrag);
-    window.removeEventListener('touchend',stopDrag);
-}
+    const letters=['א','ב','ג','ד','ה','ו','ז','ח','ט','י','כ','ל','מ','נ','ס','ע','פ','צ','ק','ר','ש','ת','ך','ם','ן','ף','ץ'];
+    let currentIndex=0, history=[];
 
-// שינוי גודל
-document.querySelectorAll('.resize-handle').forEach(h=>{
-    h.addEventListener('mousedown', startResize);
-    h.addEventListener('touchstart', startResize,{passive:false});
-});
+    // בונה את פס האותיות
+    letters.forEach((ltr,i)=>{
+      const el=document.createElement('div');
+      el.className='letter';
+      if(i===currentIndex) el.classList.add('active');
+      el.textContent=ltr;
+      lettersBar.appendChild(el);
+    });
 
-function startResize(e){
-    e.preventDefault();
-    resize=true;
-    resizeDir=[...e.target.classList].find(c=>['nw','ne','sw','se'].includes(c));
-    const pos=getEventPos(e);
-    startX=pos.x;
-    startY=pos.y;
-    const rect=cropRect.getBoundingClientRect();
-    origX=rect.left;
-    origY=rect.top;
-    origWidth=cropRect.offsetWidth;
-    origHeight=cropRect.offsetHeight;
-    window.addEventListener('mousemove',onResize);
-    window.addEventListener('touchmove',onResize,{passive:false});
-    window.addEventListener('mouseup',stopResize);
-    window.addEventListener('touchend',stopResize);
-}
+    function setInstruction() {
+      if (currentIndex === 0) {
+        instructionEl.innerHTML = `🎯 גררו את הריבוע ומקמו אותו על האות <b>${letters[0]}</b>, ואז לחצו “חתוך”.`;
+      } else if (currentIndex < letters.length) {
+        instructionEl.textContent = `✂ מעולה! עכשיו חתוך את האות ${letters[currentIndex]}`;
+      } else {
+        instructionEl.textContent = `🎉 כל האותיות נשמרו! מייצרים את הפונט...`;
+      }
+    }
 
-function onResize(e){
-    if(!resize) return;
-    e.preventDefault();
-    const pos=getEventPos(e);
-    let dx=pos.x-startX, dy=pos.y-startY;
-    const containerRect=container.getBoundingClientRect();
-    const imgRect=img.getBoundingClientRect();
-    let newLeft=parseInt(cropRect.style.left), newTop=parseInt(cropRect.style.top), newWidth=origWidth, newHeight=origHeight;
+    function updateLettersBar(){
+      [...lettersBar.children].forEach((child,i)=>{
+        child.classList.toggle('active', i===currentIndex);
+      });
+      if (currentIndex < letters.length) {
+        saveBtn.textContent = `✂ חתוך את האות ${letters[currentIndex]}`;
+      }
+    }
 
-    if(resizeDir.includes('n')){ newTop += dy; newHeight -= dy; }
-    if(resizeDir.includes('w')){ newLeft += dx; newWidth -= dx; }
-    if(resizeDir.includes('e')){ newWidth += dx; }
-    if(resizeDir.includes('s')){ newHeight += dy; }
+    function clamp(val,min,max){return Math.min(Math.max(val,min),max);}
+    function getEventPos(e){return e.touches?{x:e.touches[0].clientX,y:e.touches[0].clientY}:{x:e.clientX,y:e.clientY};}
 
-    newWidth = Math.max(minWidth,newWidth);
-    newHeight = Math.max(minHeight,newHeight);
+    // גרירה
+    cropRect.addEventListener('mousedown', startDrag);
+    cropRect.addEventListener('touchstart', startDrag, {passive:false});
 
-    newLeft = clamp(newLeft, 0, imgRect.width - newWidth);
-    newTop = clamp(newTop, 0, imgRect.height - newHeight);
+    function startDrag(e){
+      if(e.target.classList.contains('resize-handle')) return;
+      e.preventDefault();
+      drag=true;
+      const pos=getEventPos(e);
+      startX=pos.x; startY=pos.y;
+      const rect=cropRect.getBoundingClientRect();
+      origX=rect.left; origY=rect.top;
+      window.addEventListener('mousemove',onDrag);
+      window.addEventListener('touchmove',onDrag,{passive:false});
+      window.addEventListener('mouseup',stopDrag);
+      window.addEventListener('touchend',stopDrag);
+    }
+    function onDrag(e){
+      if(!drag) return;
+      e.preventDefault();
+      const pos=getEventPos(e);
+      const dx=pos.x-startX, dy=pos.y-startY;
 
-    cropRect.style.left=newLeft+'px';
-    cropRect.style.top=newTop+'px';
-    cropRect.style.width=newWidth+'px';
-    cropRect.style.height=newHeight+'px';
-    mustMoveBeforeSave=false;
-}
+      const containerRect=container.getBoundingClientRect();
+      const imgRect=img.getBoundingClientRect();
 
-function stopResize(){
-    resize=false;
-    window.removeEventListener('mousemove',onResize);
-    window.removeEventListener('touchmove',onResize);
-    window.removeEventListener('mouseup',stopResize);
-    window.removeEventListener('touchend',stopResize);
-}
+      let newLeft=origX+dx;
+      let newTop=origY+dy;
 
-// שמירה
-document.getElementById('save-crop').addEventListener('click', async()=>{
-    if(!img.naturalWidth) return alert('התמונה עדיין בטעינה');
-    if(mustMoveBeforeSave) return alert('יש להזיז את הריבוע לפני שמירת אות נוספת.');
+      // גבולות יחסית לתיבת התמונה בתוך ה-container
+      const minLeft = imgRect.left - containerRect.left;
+      const maxLeft = imgRect.right - containerRect.left - cropRect.offsetWidth;
+      const minTop  = imgRect.top  - containerRect.top;
+      const maxTop  = imgRect.bottom - containerRect.top - cropRect.offsetHeight;
 
-    const cropRectStyle=cropRect.getBoundingClientRect();
-    const imgRect=img.getBoundingClientRect();
-    const scaleX = img.naturalWidth / imgRect.width;
-    const scaleY = img.naturalHeight / imgRect.height;
-    const cropX=(cropRectStyle.left-imgRect.left)*scaleX;
-    const cropY=(cropRectStyle.top-imgRect.top)*scaleY;
-    const cropW=cropRectStyle.width*scaleX;
-    const cropH=cropRectStyle.height*scaleY;
-    const cropPosStr=`${Math.round(cropX)},${Math.round(cropY)},${Math.round(cropW)},${Math.round(cropH)}`;
+      newLeft=clamp(newLeft - containerRect.left, minLeft, maxLeft);
+      newTop =clamp(newTop  - containerRect.top,  minTop,  maxTop);
 
-    if(lastCropPosition===cropPosStr) return alert('לא ניתן לחתוך שוב באותו מיקום. יש להזיז את הריבוע.');
-    lastCropPosition=cropPosStr;
+      cropRect.style.left = newLeft + 'px';
+      cropRect.style.top  = newTop  + 'px';
+      mustMoveBeforeSave=false;
+    }
+    function stopDrag(){
+      drag=false;
+      window.removeEventListener('mousemove',onDrag);
+      window.removeEventListener('touchmove',onDrag);
+      window.removeEventListener('mouseup',stopDrag);
+      window.removeEventListener('touchend',stopDrag);
+    }
 
-    const cropCanvas=document.createElement('canvas');
-    cropCanvas.width=cropW;
-    cropCanvas.height=cropH;
-    const cropCtx=cropCanvas.getContext('2d');
-    cropCtx.drawImage(img,cropX,cropY,cropW,cropH,0,0,cropW,cropH);
+    // שינוי גודל
+    document.querySelectorAll('.resize-handle').forEach(h=>{
+      h.addEventListener('mousedown', startResize);
+      h.addEventListener('touchstart', startResize,{passive:false});
+    });
+    function startResize(e){
+      e.preventDefault();
+      resize=true;
+      resizeDir=[...e.target.classList].find(c=>['nw','ne','sw','se'].includes(c));
+      const pos=getEventPos(e);
+      startX=pos.x; startY=pos.y;
+      const rect=cropRect.getBoundingClientRect();
+      origX=rect.left; origY=rect.top;
+      origWidth=cropRect.offsetWidth; origHeight=cropRect.offsetHeight;
+      window.addEventListener('mousemove',onResize);
+      window.addEventListener('touchmove',onResize,{passive:false});
+      window.addEventListener('mouseup',stopResize);
+      window.addEventListener('touchend',stopResize);
+    }
+    function onResize(e){
+      if(!resize) return;
+      e.preventDefault();
+      const pos=getEventPos(e);
+      let dx=pos.x-startX, dy=pos.y-startY;
 
-    // שחור לבן
-    const imgData=cropCtx.getImageData(0,0,cropCanvas.width,cropCanvas.height);
-    const data=imgData.data;
-    for(let i=0;i<data.length;i+=4){
+      const containerRect=container.getBoundingClientRect();
+      const imgRect=img.getBoundingClientRect();
+
+      let newLeft=parseFloat(cropRect.style.left)||0;
+      let newTop =parseFloat(cropRect.style.top)||0;
+      let newWidth=origWidth, newHeight=origHeight;
+
+      if(resizeDir.includes('n')){ newTop += dy; newHeight -= dy; }
+      if(resizeDir.includes('w')){ newLeft += dx; newWidth -= dx; }
+      if(resizeDir.includes('e')){ newWidth += dx; }
+      if(resizeDir.includes('s')){ newHeight += dy; }
+
+      newWidth = Math.max(minWidth,newWidth);
+      newHeight = Math.max(minHeight,newHeight);
+
+      // גבולות בתוך התמונה (לא לצאת מחוץ לאימג' גם אם יש מרווחים ב-container)
+      const minLeft = (imgRect.left - containerRect.left);
+      const maxLeft = (imgRect.right - containerRect.left) - newWidth;
+      const minTop  = (imgRect.top  - containerRect.top);
+      const maxTop  = (imgRect.bottom - containerRect.top) - newHeight;
+
+      newLeft = clamp(newLeft, minLeft, maxLeft);
+      newTop  = clamp(newTop,  minTop,  maxTop);
+
+      cropRect.style.left=newLeft+'px';
+      cropRect.style.top=newTop+'px';
+      cropRect.style.width=newWidth+'px';
+      cropRect.style.height=newHeight+'px';
+      mustMoveBeforeSave=false;
+    }
+    function stopResize(){
+      resize=false;
+      window.removeEventListener('mousemove',onResize);
+      window.removeEventListener('touchmove',onResize);
+      window.removeEventListener('mouseup',stopResize);
+      window.removeEventListener('touchend',stopResize);
+    }
+
+    // פונקציית יצירת פונט (משותפת ללחיצה ידנית ואוטומטית)
+    async function generateFontFlow(auto=false){
+      try{
+        statusEl.textContent = auto ? "⏳ כל האותיות נשמרו – מייצרים את הפונט..." : "⏳ יוצרים את הפונט, המתן...";
+        const res = await fetch("/generate_font",{method:"POST"});
+        const data = await res.json();
+        if(data.status==="success"){
+          downloadBtn.href = data.download_url;
+          downloadBtn.style.display = "inline-block";
+          generateBtn.style.display = "none";
+          statusEl.textContent = "🎉 הפונט מוכן! לחץ על הורדה להורדת הפונט.";
+        } else {
+          statusEl.textContent = "❌ שגיאה ביצירת הפונט: " + (data.message||"");
+          generateBtn.style.display = "inline-block";
+        }
+      } catch(err){
+        statusEl.textContent = "❌ שגיאה ביצירת הפונט: " + err.message;
+        generateBtn.style.display = "inline-block";
+      }
+    }
+
+    // שמירה
+    saveBtn.addEventListener('click', async()=>{
+      if(!img.naturalWidth) return alert('התמונה עדיין בטעינה');
+      if(mustMoveBeforeSave) return alert('יש להזיז את הריבוע לפני שמירת אות נוספת.');
+
+      const cropRectStyle=cropRect.getBoundingClientRect();
+      const imgRect=img.getBoundingClientRect();
+
+      const scaleX = img.naturalWidth / imgRect.width;
+      const scaleY = img.naturalHeight / imgRect.height;
+
+      const cropX=(cropRectStyle.left-imgRect.left)*scaleX;
+      const cropY=(cropRectStyle.top-imgRect.top)*scaleY;
+      const cropW=cropRectStyle.width*scaleX;
+      const cropH=cropRectStyle.height*scaleY;
+
+      const cropPosStr=`${Math.round(cropX)},${Math.round(cropY)},${Math.round(cropW)},${Math.round(cropH)}`;
+      if(lastCropPosition===cropPosStr) return alert('לא ניתן לחתוך שוב באותו מיקום. יש להזיז את הריבוע.');
+      lastCropPosition=cropPosStr;
+
+      const cropCanvas=document.createElement('canvas');
+      cropCanvas.width=cropW; cropCanvas.height=cropH;
+      const cropCtx=cropCanvas.getContext('2d');
+      cropCtx.drawImage(img,cropX,cropY,cropW,cropH,0,0,cropW,cropH);
+
+      // המרה לגווני אפור (כמו שיש לך בקוד)
+      const imgData=cropCtx.getImageData(0,0,cropCanvas.width,cropCanvas.height);
+      const data=imgData.data;
+      for(let i=0;i<data.length;i+=4){
         const avg=(data[i]+data[i+1]+data[i+2])/3;
         data[i]=data[i+1]=data[i+2]=avg;
-    }
-    cropCtx.putImageData(imgData,0,0);
+      }
+      cropCtx.putImageData(imgData,0,0);
 
-    progressContainer.style.display='block';
-    progressBar.style.width='0%';
-    let progress=0;
-    const interval=setInterval(()=>{
-        progress+=25;
-        progressBar.style.width=progress+'%';
+      // Progress מזויף קצר לחוויה
+      progressContainer.style.display='block';
+      progressBar.style.width='0%';
+      let progress=0;
+      const interval=setInterval(()=>{
+        progress+=25; progressBar.style.width=progress+'%';
         if(progress>=100) clearInterval(interval);
-    },50);
+      },50);
 
-    const res=await fetch('/backend/save_crop',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({name:letters[currentIndex],index:currentIndex,data:cropCanvas.toDataURL('image/png')})
+      try{
+        const res=await fetch('/backend/save_crop',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({name:letters[currentIndex],index:currentIndex,data:cropCanvas.toDataURL('image/png')})
+        });
+        const json=await res.json();
+        progressContainer.style.display='none';
+        if(json.error) return alert('שגיאה בשמירה: '+json.error);
+      }catch(err){
+        progressContainer.style.display='none';
+        return alert('שגיאה בשמירה: '+err.message);
+      }
+
+      // עדכון UI
+      lettersBar.children[currentIndex].classList.add('done');
+      history.push(currentIndex);
+      mustMoveBeforeSave=true; // מונע דאבל-קליק
+
+      currentIndex++;
+      updateLettersBar();
+      setInstruction();
+
+      if(currentIndex>=letters.length){
+        // סיימנו – ייצור אוטומטי + כפתור ידני לגיבוי
+        generateBtn.style.display='inline-block';
+        await generateFontFlow(true);
+      } else {
+        statusEl.textContent=`✅ האות "${letters[currentIndex-1]}" נשמרה!`;
+      }
     });
 
-    const json=await res.json();
-    progressContainer.style.display='none';
-    if(json.error) return alert('שגיאה בשמירה: '+json.error);
+    // Undo
+    undoBtn.addEventListener('click',()=>{
+      if(history.length===0) return;
+      currentIndex=history.pop();
+      lettersBar.children[currentIndex].classList.remove('done');
+      statusEl.textContent=`🔄 חיתוך האות "${letters[currentIndex]}" בוטל.`;
+      mustMoveBeforeSave=false; // אפשר לשמור שוב
+      updateLettersBar();
+      setInstruction();
+    });
 
-    history.push(currentIndex);
-    lettersBar.children[currentIndex].classList.add('done');
-    mustMoveBeforeSave=true;
-    currentIndex++;
+    // Generate (ידני)
+    generateBtn.addEventListener("click", async()=>{ await generateFontFlow(false); });
+
+    // אתחול טקסטים
     updateLettersBar();
-
-    if(currentIndex>=letters.length){
-        statusEl.textContent='🎉 כל האותיות נשמרו! לחץ על "צור פונט" כדי להפיק את הפונט.';
-        generateBtn.style.display='inline-block';
-    } else {
-        statusEl.textContent=`✅ האות "${letters[currentIndex-1]}" נשמרה! חתוך את "${letters[currentIndex]}"`;
-    }
-});
-
-// Undo
-document.getElementById('undo-crop').addEventListener('click',()=>{
-    if(history.length===0) return;
-    currentIndex=history.pop();
-    lettersBar.children[currentIndex].classList.remove('done');
-    statusEl.textContent=`🔄 חיתוך האות "${letters[currentIndex]}" בוטל.`;
-    updateLettersBar();
-});
-
-// Generate font
-generateBtn.addEventListener("click", async()=>{
-    statusEl.textContent="⏳ יוצרים את הפונט, המתן...";
-    const res=await fetch("/generate_font",{method:"POST"});
-    const data=await res.json();
-    if(data.status==="success"){
-        downloadBtn.href=data.download_url;
-        downloadBtn.style.display="inline-block";
-        statusEl.textContent="🎉 הפונט מוכן! לחץ על הורדה להורדת הפונט.";
-    } else statusEl.textContent="❌ שגיאה ביצירת הפונט: "+data.message;
-});
-</script>
+    setInstruction();
+  </script>
 </body>
 </html>
-
