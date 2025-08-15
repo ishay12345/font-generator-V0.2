@@ -30,11 +30,12 @@ letter_map = {
     "resh": 0x05E8,
     "shin": 0x05E9,
     "tav": 0x05EA,
-    "finalkaf": 0x05DA,
-    "finalmem": 0x05DD,
-    "finalnun": 0x05DF,
-    "finalpe": 0x05E3,
-    "finaltsadi": 0x05E5
+    # אותיות סופיות
+    "finalkaf": 0x05DA,   # ך
+    "finalmem": 0x05DD,   # ם
+    "finalnun": 0x05DF,   # ן
+    "finalpe": 0x05E3,    # ף
+    "finaltsadi": 0x05E5  # ץ
 }
 
 # ===== הזזות אנכיות מותאמות =====
@@ -43,31 +44,17 @@ vertical_offsets = {
     "qof": -250,
 }
 
-# ===== הגדרות פדינג =====
-GLOBAL_Y_SHIFT = -400
-PADDING_GENERAL = 35
-PADDING_LARGE = 150  # מוגדל לאותיות סופיות ך ף ץ
+# ===== הזזה גלובלית ל־Y =====
+GLOBAL_Y_SHIFT = -400  # ניתן לשנות
+PADDING_GENERAL = 35    # פדינג כללי
+PADDING_LARGE = 150      # פדינג אנכי מוגדל לאותיות ך ף ץ
 
-# ===== התאמות אופקיות בין אותיות צמודות =====
+# ===== מיפוי רווח אופקי מותאם עבור אותיות צמודות =====
 HORIZONTAL_ADJUST = {
     ("yod", "kaf"): 80,
     ("shin", "tav"): 60,
     ("kaf", "lamed"): 30
 }
-
-def center_glyph_x(glyph):
-    """מרכוז גליף ב-X לפי גבולותיו אחרי שה־paths נטענו"""
-    bounds = glyph.bounds
-    if not bounds:
-        return
-    min_x, _, max_x, _ = bounds
-    shift_x = (600 - (max_x - min_x)) / 2 - min_x
-    pen = glyph.getPen()
-    transform = Identity.translate(shift_x, 0)
-    tp = TransformPen(pen, transform)
-
-    for contour in glyph:
-        contour.draw(tp)
 
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
@@ -83,13 +70,17 @@ def generate_ttf(svg_folder, output_ttf):
     count = 0
     logs = []
 
-    # ===== טעינת אותיות רגילות =====
+    # ===== טעינת כל האותיות הרגילות כולל סופיות אם קיימות ב־svg_folder =====
     for filename in sorted(os.listdir(svg_folder)):
         if not filename.lower().endswith(".svg"):
             continue
 
         try:
-            name = filename.split("_", 1)[1].replace(".svg", "") if "_" in filename else filename.replace(".svg", "")
+            if "_" in filename:
+                name = filename.split("_", 1)[1].replace(".svg", "")
+            else:
+                name = filename.replace(".svg", "")
+
             if name not in letter_map:
                 msg = f"🔸 אות לא במפה: {name}"
                 print(msg)
@@ -114,12 +105,11 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.leftMargin = 40
             glyph.rightMargin = 40
 
-            # פדינג
-            padding_x = 5 if name == "alef" else PADDING_GENERAL
-            padding_y = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
+            # בחירת פדינג: רגיל או מוגדל לאותיות סופיות מסוימות
+            padding = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
             pen = glyph.getPen()
-            transform = Identity.translate(padding_x, vertical_shift + padding_y)
+            transform = Identity.translate(padding, vertical_shift - padding)
             tp = TransformPen(pen, transform)
 
             successful_paths = 0
@@ -143,10 +133,6 @@ def generate_ttf(svg_folder, output_ttf):
                 logs.append(msg)
                 continue
 
-            # מרכוז האות א
-            if name == "alef":
-                center_glyph_x(glyph)
-
             msg = f"✅ {name} נוסף בהצלחה ({successful_paths} path/paths)"
             print(msg)
             logs.append(msg)
@@ -158,7 +144,7 @@ def generate_ttf(svg_folder, output_ttf):
             print(msg)
             logs.append(msg)
 
-    # ===== טעינת האותיות הסופיות =====
+    # ===== טעינת האותיות הסופיות ידנית מהמיקום הקבוע =====
     final_svgs = {
         "finalkaf": "app/backend/static/svg_letters/finalkaf.svg",
         "finalmem": "app/backend/static/svg_letters/finalmem.svg",
@@ -184,11 +170,10 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.leftMargin = 40
             glyph.rightMargin = 40
 
-            padding_x = PADDING_GENERAL
-            padding_y = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
+            padding = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
             pen = glyph.getPen()
-            transform = Identity.translate(padding_x, vertical_shift + padding_y)
+            transform = Identity.translate(padding, vertical_shift - padding)
             tp = TransformPen(pen, transform)
 
             for path_element in paths:
@@ -208,7 +193,7 @@ def generate_ttf(svg_folder, output_ttf):
             print(msg)
             logs.append(msg)
 
-    # ===== שמירת הפונט =====
+    # ===== סיום ושמירת הפונט =====
     if count == 0:
         msg = "❌ לא נוצרו גליפים כלל."
         print(msg)
