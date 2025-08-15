@@ -177,4 +177,67 @@ document.getElementById('save-crop').addEventListener('click', async()=>{
   if(mustMoveBeforeSave) return alert('יש להזיז את הריבוע לפני שמירת אות נוספת.');
   const cropRectStyle=cropRect.getBoundingClientRect();
   const imgRect=img.getBoundingClientRect();
-  // scale נכון לפי naturalWidth/natural
+  // scale נכון לפי naturalWidth/naturalHeight
+  const scaleX = img.naturalWidth / imgRect.width;
+  const scaleY = img.naturalHeight / imgRect.height;
+  const cropX=(cropRectStyle.left-imgRect.left)*scaleX;
+  const cropY=(cropRectStyle.top-imgRect.top)*scaleY;
+  const cropW=cropRectStyle.width*scaleX;
+  const cropH=cropRectStyle.height*scaleY;
+  const cropPosStr=`${Math.round(cropX)},${Math.round(cropY)},${Math.round(cropW)},${Math.round(cropH)}`;
+  if(lastCropPosition===cropPosStr) return alert('לא ניתן לחתוך שוב באותו מיקום. יש להזיז את הריבוע.');
+  lastCropPosition=cropPosStr;
+  const cropCanvas=document.createElement('canvas');
+  cropCanvas.width=cropW; cropCanvas.height=cropH;
+  const cropCtx=cropCanvas.getContext('2d');
+  cropCtx.drawImage(img,cropX,cropY,cropW,cropH,0,0,cropW,cropH);
+  // שחור לבן
+  const imgData=cropCtx.getImageData(0,0,cropCanvas.width,cropCanvas.height);
+  const data=imgData.data;
+  for(let i=0;i<data.length;i+=4){
+    const avg=(data[i]+data[i+1]+data[i+2])/3;
+    data[i]=data[i+1]=data[i+2]=avg;
+  }
+  cropCtx.putImageData(imgData,0,0);
+  progressContainer.style.display='block';
+  progressBar.style.width='0%';
+  let progress=0;
+  const interval=setInterval(()=>{progress+=25; progressBar.style.width=progress+'%'; if(progress>=100) clearInterval(interval);},50);
+  const res=await fetch('/backend/save_crop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:letters[currentIndex],index:currentIndex,data:cropCanvas.toDataURL('image/png')})});
+  const json=await res.json();
+  progressContainer.style.display='none';
+  if(json.error) return alert('שגיאה בשמירה: '+json.error);
+  history.push(currentIndex);
+  lettersBar.children[currentIndex].classList.add('done');
+  mustMoveBeforeSave=true;
+  currentIndex++;
+  updateLettersBar();
+  if(currentIndex>=letters.length){
+    statusEl.textContent='🎉 כל האותיות נשמרו! לחץ על "צור פונט" כדי להפיק את הפונט.';
+    generateBtn.style.display='inline-block';
+  } else statusEl.textContent=`✅ האות "${letters[currentIndex-1]}" נשמרה! חתוך את "${letters[currentIndex]}"`;
+});
+
+// Undo
+document.getElementById('undo-crop').addEventListener('click',()=>{
+  if(history.length===0) return;
+  currentIndex=history.pop();
+  lettersBar.children[currentIndex].classList.remove('done');
+  statusEl.textContent=`🔄 חיתוך האות "${letters[currentIndex]}" בוטל.`;
+  updateLettersBar();
+});
+
+// Generate font
+generateBtn.addEventListener("click", async()=>{
+  statusEl.textContent="⏳ יוצרים את הפונט, המתן...";
+  const res=await fetch("/generate_font",{method:"POST"});
+  const data=await res.json();
+  if(data.status==="success"){
+    downloadBtn.href=data.download_url;
+    downloadBtn.style.display="inline-block";
+    statusEl.textContent="🎉 הפונט מוכן! לחץ על הורדה להורדת הפונט.";
+  } else statusEl.textContent="❌ שגיאה ביצירת הפונט: "+data.message;
+});
+</script>
+</body>
+</html>
