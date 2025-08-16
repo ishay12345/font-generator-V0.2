@@ -46,7 +46,7 @@ vertical_offsets = {
 
 # ===== הגדרות כלליות =====
 GLOBAL_Y_SHIFT = -400
-PADDING_GENERAL = 35
+PADDING_GENERAL = 28
 PADDING_LARGE = 150
 GLOBAL_SCALE = 0.7
 
@@ -104,8 +104,8 @@ def generate_ttf(svg_folder, output_ttf):
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
             glyph.width = 600
-            glyph.leftMargin = 40
-            glyph.rightMargin = 40
+            glyph.leftMargin = 30
+            glyph.rightMargin = 30
 
             padding = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
