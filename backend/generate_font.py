@@ -47,7 +47,7 @@ vertical_offsets = {
 # ===== הזזה גלובלית ל־Y =====
 GLOBAL_Y_SHIFT = -400  # ניתן לשנות
 PADDING_GENERAL = 35    # פדינג כללי
-PADDING_LARGE = 150      # פדינג אנכי מוגדל לאותיות ך ף ץ
+PADDING_LARGE = 150    # פדינג לאותיות סופיות
 
 # ===== מיפוי רווח אופקי מותאם עבור אותיות צמודות =====
 HORIZONTAL_ADJUST = {
@@ -56,11 +56,12 @@ HORIZONTAL_ADJUST = {
     ("kaf", "lamed"): 30
 }
 
-# ===== סקיילינג מיוחד לאותיות סופיות =====
-FINAL_SCALE = {
-    "finalpe": 0.6,       # ף קטן מאוד
-    "finaltsadi": 0.6     # ץ קטן מאוד
+# ===== טרנספורמציות מיוחדות לאותיות =====
+special_transforms = {
+    "finalpe": Identity.scale(0.70, 0.70).translate(50, 250),     # ף מוקטן ומורם
+    "finaltsadi": Identity.scale(0.70, 0.70).translate(50, 250),  # ץ מוקטן ומורם
 }
+
 
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
@@ -111,16 +112,15 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.leftMargin = 40
             glyph.rightMargin = 40
 
-            # בחירת פדינג
             padding = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
 
-            # אם זו אות סופית להקטין אותה
-            if name in FINAL_SCALE:
-                scale = FINAL_SCALE[name]
-                transform = Identity.translate(padding, vertical_shift - padding).scale(scale, scale)
+            # בדיקה אם יש טרנספורמציה מיוחדת
+            base_transform = Identity.translate(padding, vertical_shift - padding)
+            if name in special_transforms:
+                transform = special_transforms[name].translate(padding, vertical_shift - padding)
             else:
-                transform = Identity.translate(padding, vertical_shift - padding)
+                transform = base_transform
 
             pen = glyph.getPen()
             tp = TransformPen(pen, transform)
@@ -157,7 +157,7 @@ def generate_ttf(svg_folder, output_ttf):
             print(msg)
             logs.append(msg)
 
-    # ===== טעינת האותיות הסופיות ידנית מהמיקום הקבוע =====
+    # ===== טעינת האותיות הסופיות ידנית =====
     final_svgs = {
         "finalkaf": "app/backend/static/svg_letters/finalkaf.svg",
         "finalmem": "app/backend/static/svg_letters/finalmem.svg",
@@ -186,12 +186,12 @@ def generate_ttf(svg_folder, output_ttf):
             padding = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
 
-            # הקטנה מיוחדת
-            if name in FINAL_SCALE:
-                scale = FINAL_SCALE[name]
-                transform = Identity.translate(padding, vertical_shift - padding).scale(scale, scale)
+            # בדיקה אם יש טרנספורמציה מיוחדת
+            base_transform = Identity.translate(padding, vertical_shift - padding)
+            if name in special_transforms:
+                transform = special_transforms[name].translate(padding, vertical_shift - padding)
             else:
-                transform = Identity.translate(padding, vertical_shift - padding)
+                transform = base_transform
 
             pen = glyph.getPen()
             tp = TransformPen(pen, transform)
