@@ -107,7 +107,7 @@ def generate_ttf(svg_folder, output_ttf):
 
             # ✅ טיפול מיוחד באות א
             if name == "alef":
-                glyph.leftMargin = 50  # דוחף אותה שמאלה
+                glyph.leftMargin = 70 # דוחף אותה שמאלה
                 glyph.rightMargin = 20
             else:
                 glyph.leftMargin = 20
