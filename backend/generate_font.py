@@ -104,8 +104,14 @@ def generate_ttf(svg_folder, output_ttf):
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
             glyph.width = 600
-            glyph.leftMargin = 17
-            glyph.rightMargin = 17
+
+            # ✅ טיפול מיוחד באות א
+            if name == "alef":
+                glyph.leftMargin = 50  # דוחף אותה שמאלה
+                glyph.rightMargin = 20
+            else:
+                glyph.leftMargin = 20
+                glyph.rightMargin = 20
 
             padding = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
