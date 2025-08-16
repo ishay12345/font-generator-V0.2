@@ -56,6 +56,12 @@ HORIZONTAL_ADJUST = {
     ("kaf", "lamed"): 30
 }
 
+# ===== סקיילינג מיוחד לאותיות סופיות =====
+FINAL_SCALE = {
+    "finalpe": 0.6,       # ף קטן מאוד
+    "finaltsadi": 0.6     # ץ קטן מאוד
+}
+
 def generate_ttf(svg_folder, output_ttf):
     print("🚀 התחלת יצירת פונט...")
     font = Font()
@@ -105,11 +111,18 @@ def generate_ttf(svg_folder, output_ttf):
             glyph.leftMargin = 40
             glyph.rightMargin = 40
 
-            # בחירת פדינג: רגיל או מוגדל לאותיות סופיות מסוימות
+            # בחירת פדינג
             padding = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
+
+            # אם זו אות סופית להקטין אותה
+            if name in FINAL_SCALE:
+                scale = FINAL_SCALE[name]
+                transform = Identity.translate(padding, vertical_shift - padding).scale(scale, scale)
+            else:
+                transform = Identity.translate(padding, vertical_shift - padding)
+
             pen = glyph.getPen()
-            transform = Identity.translate(padding, vertical_shift - padding)
             tp = TransformPen(pen, transform)
 
             successful_paths = 0
@@ -172,8 +185,15 @@ def generate_ttf(svg_folder, output_ttf):
 
             padding = PADDING_LARGE if name in ["finalkaf", "finalpe", "finaltsadi"] else PADDING_GENERAL
             vertical_shift = vertical_offsets.get(name, 0) + GLOBAL_Y_SHIFT
+
+            # הקטנה מיוחדת
+            if name in FINAL_SCALE:
+                scale = FINAL_SCALE[name]
+                transform = Identity.translate(padding, vertical_shift - padding).scale(scale, scale)
+            else:
+                transform = Identity.translate(padding, vertical_shift - padding)
+
             pen = glyph.getPen()
-            transform = Identity.translate(padding, vertical_shift - padding)
             tp = TransformPen(pen, transform)
 
             for path_element in paths:
