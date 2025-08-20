@@ -46,9 +46,9 @@ vertical_offsets = {
 
 # ===== הגדרות כלליות =====
 GLOBAL_Y_SHIFT = -400
-PADDING_GENERAL = 15
+PADDING_GENERAL = 11
 PADDING_LARGE = 100
-GLOBAL_SCALE = 1.1
+GLOBAL_SCALE = 1.0
 
 # ===== טרנספורמציות מיוחדות =====
 special_transforms = {
@@ -103,7 +103,7 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-            glyph.width = 500
+            glyph.width = 600
 
             # ✅ טיפול מיוחד באות א
             if name == "alef":
