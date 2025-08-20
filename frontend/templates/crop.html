@@ -64,6 +64,7 @@ button:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 10px 22px 
 #status { margin-top: 12px; font-weight: bold; color: #ffeb3b; min-height: 1.2em; text-shadow:0 0 8px rgba(0,0,0,0.6); }
 #progress-container { margin-top: 12px; width: 220px; height: 22px; border: 2px solid rgba(255,255,255,0.5); border-radius: 12px; overflow: hidden; display: none; background: rgba(255,255,255,0.15); backdrop-filter: blur(4px);}
 #progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg,#00c6ff,#ff6b6b,#fddb92); background-size:300% 300%; animation: gradientMove 5s linear infinite; transition: width 0.2s ease;}
+#downloadBtn { padding:12px 22px; border-radius:12px; background:#27ae60; color:#fff; font-weight:bold; text-decoration:none; display:none; }
 </style>
 </head>
 <body>
@@ -74,7 +75,7 @@ button:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 10px 22px 
   1️⃣ צמוד לאותה האות שאתם עומדים לחתוך שימו לב שהחיתוך יהיה בשורה<br>
   2️⃣ עקבו אחרי ההוראות למטה – איזו אות לחתוך ואם ביטלתם אותה – איזו צריך לחתוך שוב<br>
   3️⃣ יש לכם את כל האותיות למעלה כדי שתראו איזו לחתוך<br>
-  4️⃣ אחרי שסיימתם – לחצו על "צור פונט" והוא יעביר אתכם לדף הבית להורדת הפונט<br>
+  4️⃣ אחרי שסיימתם – לחצו על "צור פונט" והוא יעביר אתכם להורדה<br>
   5️⃣ דוגמא מלאה – <a href="https://www.youtube.com/watch?v=fakeURL" target="_blank" style="color:#ffeb3b;">צפו בסרטון יוטיוב</a>
 </div>
 
@@ -102,6 +103,8 @@ button:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 10px 22px 
 </div>
 <div id="status"></div>
 <div id="progress-container"><div id="progress-bar"></div></div>
+
+<a id="downloadBtn" href="/download_font" download="my_font.ttf">📥 הורד את הפונט</a>
 
 <script>
 {% if filename %}
@@ -191,7 +194,7 @@ document.getElementById('undo-crop').addEventListener('click',()=>{
   updateLettersBar();
 });
 
-// יצירת פונט + מעבר לדף הבית
+// יצירת פונט + הופעה של כפתור הורדה
 async function createFont() {
   const statusEl = document.getElementById('status');
   statusEl.textContent = "⏳ יוצרים את הפונט, המתן...";
@@ -200,17 +203,23 @@ async function createFont() {
     const data = await res.json();
 
     if (data.status === "success") {
-      statusEl.innerHTML = '🎉 הפונט מוכן! <a href="/" style="color:#ffeb3b;">לחץ כאן כדי להשלים את ההורדה</a>';
+      statusEl.textContent = "🎉 הפונט מוכן! לחץ על הכפתור להורדה:";
+      const downloadBtn = document.getElementById("downloadBtn");
+      downloadBtn.style.display = "inline-block";
     } else {
       statusEl.textContent = "❌ שגיאה ביצירת הפונט: " + data.message;
     }
   } catch (err) {
     console.error(err);
-    statusEl.textContent = "❌ שגיאה ביצירת הפונט!";
+    statusEl.textContent = "❌ שגיאה בלתי צפויה ביצירת הפונט.";
   }
 }
 
 document.getElementById('generateFontBtn').addEventListener('click', createFont);
+document.getElementById("downloadBtn").addEventListener("click", function (e) {
+  e.preventDefault();
+  window.location.href = "/download_font";
+});
 {% endif %}
 </script>
 </body>
