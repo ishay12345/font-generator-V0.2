@@ -103,7 +103,7 @@ def generate_ttf(svg_folder, output_ttf):
 
             glyph = font.newGlyph(name)
             glyph.unicode = unicode_val
-            glyph.width = 500
+            glyph.width = 650
 
             # ✅ טיפול מיוחד באות א
             if name == "alef":
