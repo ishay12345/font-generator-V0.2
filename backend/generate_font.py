@@ -159,6 +159,13 @@ def generate_ttf(svg_folder, output_ttf):
             logs.append(msg)
 
     # ===== טעינת אותיות סופיות ידנית =====
+    final_svgs = {
+        "finalkaf": "app/backend/static/svg_letters/finalkaf.svg",
+        "finalmem": "app/backend/static/svg_letters/finalmem.svg",
+        "finalnun": "app/backend/static/svg_letters/finalnun.svg",
+        "finalpe": "app/backend/static/svg_letters/finalpe.svg",
+        "finaltsadi": "app/backend/static/svg_letters/finaltsadi.svg"
+    }
 
     for name, path in final_svgs.items():
         if not os.path.exists(path):
