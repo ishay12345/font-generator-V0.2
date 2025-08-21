@@ -45,6 +45,7 @@ vertical_offsets = {
 }
 
 # ===== הגדרות כלליות =====
+GLOBAL_Y_SHIFT = 0
 PADDING_GENERAL = 8
 PADDING_LARGE = 100
 GLOBAL_SCALE = 1.0
